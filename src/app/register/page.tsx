@@ -1,0 +1,178 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import axios from 'axios';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const { status } = useSession();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [canRegister, setCanRegister] = useState(false);
+
+  // Check if registration is allowed (no admin exists yet)
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        const response = await axios.get('/api/auth/registration-status');
+        setCanRegister(response.data.canRegister);
+      } catch (error) {
+        console.error('Error checking registration status:', error);
+        setError('Unable to check if registration is allowed');
+      }
+    };
+
+    checkRegistrationStatus();
+  }, []);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.post('/api/auth/register', {
+        name,
+        email,
+        password,
+      });
+      
+      if(!response.data.success) {
+        throw new Error(response.data.error);
+      }
+
+      router.push('/login?registered=true');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setError(error.response?.data?.error ?? 'An error occurred during registration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (status === 'loading') {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Create Admin Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!canRegister ? (
+            <div className="text-center py-4">
+              <p className="text-red-500 mb-4">Registration is not available.</p>
+              <p>An admin account already exists. Please login instead.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => router.push('/login')}
+              >
+                Go to Login
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              
+              {error && (
+                <div className="text-red-500 text-sm">{error}</div>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Register'}
+              </Button>
+              
+              <div className="text-center text-sm">
+                <a 
+                  href="/login" 
+                  className="text-blue-500 hover:underline"
+                >
+                  Already have an account? Login
+                </a>
+              </div>
+            </form>
+          )}
+        </CardContent>
+        <CardFooter>
+          <p className="text-sm text-center text-gray-500 w-full">
+            WhatsApp Client-Developer Management Platform
+          </p>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+} 
