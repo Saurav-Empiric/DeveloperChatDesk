@@ -3,53 +3,70 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { authService } from '@/services/authService';
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // React Query for checking registration status
+  const { 
+    data: regStatusData, 
+    isLoading: checkingRegistration,
+    error: regStatusError
+  } = useQuery({
+    queryKey: ['homeRegistrationStatus'],
+    queryFn: async () => {
+      const response = await authService.getRegistrationStatus();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    enabled: status === 'unauthenticated',
+  });
+
+  // Handle errors from registration status check
+  useEffect(() => {
+    if (regStatusError) {
+      const errorMessage = regStatusError instanceof Error ? 
+                          regStatusError.message : 
+                          'Failed to check registration status';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      // On error, default to login
+      router.push('/login');
+    }
+  }, [regStatusError, router]);
 
   useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      if (status === 'unauthenticated') {
-        try {
-          const response = await axios.get('/api/auth/registration-status');
-          if (response.data.canRegister) {
-            // If no admin exists, redirect to registration
-            router.push('/register');
-          } else {
-            // Otherwise, redirect to login
-            router.push('/login');
-          }
-        } catch (error) {
-          console.error('Error checking registration status:', error);
-          // On error, default to login
-          router.push('/login');
-        } finally {
-          setCheckingRegistration(false);
-        }
-      } else if (status === 'authenticated') {
-        // If already logged in, redirect based on role
-        if (session?.user?.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else if (session?.user?.role === 'developer') {
-          router.push('/developer/dashboard');
-        }
-        setCheckingRegistration(false);
+    if (status === 'unauthenticated' && !checkingRegistration && regStatusData) {
+      if (regStatusData.canRegister) {
+        // If no admin exists, redirect to registration
+        router.push('/register');
+      } else {
+        // Otherwise, redirect to login
+        router.push('/login');
       }
-    };
-
-    if (status !== 'loading') {
-      checkRegistrationStatus();
+    } else if (status === 'authenticated') {
+      // If already logged in, redirect based on role
+      if (session?.user?.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else if (session?.user?.role === 'developer') {
+        router.push('/developer/dashboard');
+      }
     }
-  }, [status, session, router]);
+  }, [status, session, router, regStatusData, checkingRegistration]);
 
   // Loading state while determining redirect
   return (
     <div className="flex justify-center items-center h-screen">
       <div className="text-lg font-medium">
         {checkingRegistration || status === 'loading' ? 'Loading...' : ''}
+        {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
       </div>
     </div>
   );

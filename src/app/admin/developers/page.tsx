@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -31,24 +31,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-
-interface Developer {
-  _id: string;
-  userId: {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
-  createdAt: string;
-}
+import { developerService, Developer, DeveloperData } from '@/services/developerService';
 
 export default function DevelopersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [developers, setDevelopers] = useState<Developer[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDeveloper, setSelectedDeveloper] = useState<Developer | null>(null);
@@ -58,7 +46,6 @@ export default function DevelopersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     // Redirect if not logged in or not an admin
@@ -69,41 +56,38 @@ export default function DevelopersPage() {
     }
   }, [status, session, router]);
 
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role === 'admin') {
-      fetchDevelopers();
-    }
-  }, [status, session]);
+  // React Query for fetching developers
+  const { 
+    data, 
+    isLoading: loading, 
+    error: fetchError,
+    refetch: refetchDevelopers
+  } = useQuery({
+    queryKey: ['developers'],
+    queryFn: async () => {
+      const response = await developerService.getDevelopers();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'admin',
+  });
+  
+  const developers = data?.developers || [];
+  const error = fetchError instanceof Error ? fetchError.message : 
+               (fetchError ? 'Failed to fetch developers' : null);
 
-  const fetchDevelopers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/developers');
-      setDevelopers(response.data.developers);
-    } catch (error) {
-      console.error('Error fetching developers:', error);
-      setError('Failed to fetch developers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddDeveloper = async () => {
-    if (!name || !email || !password) {
-      setFormError('Please fill in all fields');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setFormError(null);
-      
-      await axios.post('/api/developers', {
-        name,
-        email,
-        password,
-      });
-      
+  // React Query mutation for adding developer
+  const addDeveloperMutation = useMutation({
+    mutationFn: async (developerData: DeveloperData) => {
+      const response = await developerService.addDeveloper(developerData);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: (data) => {
       // Reset form
       setName('');
       setEmail('');
@@ -111,34 +95,52 @@ export default function DevelopersPage() {
       setOpenAddDialog(false);
       
       // Refresh the list
-      fetchDevelopers();
-      
-      toast.success('Developer added successfully');
-    } catch (error: any) {
+      queryClient.invalidateQueries({ queryKey: ['developers'] });
+      toast.success(data.message || 'Developer added successfully');
+    },
+    onError: (error: Error) => {
       console.error('Error adding developer:', error);
-      setFormError(error.response?.data?.error || 'Failed to add developer');
-    } finally {
-      setSubmitting(false);
+      setFormError(error.message || 'Failed to add developer');
     }
+  });
+
+  // React Query mutation for deleting developer
+  const deleteDeveloperMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await developerService.deleteDeveloper(id);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: (data) => {
+      // Refresh the list
+      queryClient.invalidateQueries({ queryKey: ['developers'] });
+      setDeleteDialogOpen(false);
+      setSelectedDeveloper(null);
+      toast.success(data.message || 'Developer deleted successfully');
+    },
+    onError: (error: Error) => {
+      console.error('Error deleting developer:', error);
+      toast.error(error.message || 'Failed to delete developer');
+      setDeleteDialogOpen(false);
+      setSelectedDeveloper(null);
+    }
+  });
+
+  const handleAddDeveloper = async () => {
+    if (!name || !email || !password) {
+      setFormError('Please fill in all fields');
+      return;
+    }
+
+    setFormError(null);
+    addDeveloperMutation.mutate({ name, email, password });
   };
 
   const handleDeleteDeveloper = async () => {
     if (!selectedDeveloper) return;
-    
-    try {
-      await axios.delete(`/api/developers?id=${selectedDeveloper._id}`);
-      
-      // Refresh the list
-      fetchDevelopers();
-      
-      toast.success('Developer deleted successfully');
-    } catch (error) {
-      console.error('Error deleting developer:', error);
-      toast.error('Failed to delete developer');
-    } finally {
-      setDeleteDialogOpen(false);
-      setSelectedDeveloper(null);
-    }
+    deleteDeveloperMutation.mutate(selectedDeveloper._id);
   };
 
   if (status === 'loading') {
@@ -211,15 +213,15 @@ export default function DevelopersPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => setOpenAddDialog(false)}
-                  disabled={submitting}
+                  disabled={addDeveloperMutation.isPending}
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleAddDeveloper}
-                  disabled={submitting}
+                  disabled={addDeveloperMutation.isPending}
                 >
-                  {submitting ? 'Adding...' : 'Add Developer'}
+                  {addDeveloperMutation.isPending ? 'Adding...' : 'Add Developer'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -261,16 +263,21 @@ export default function DevelopersPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete the developer account and remove all chat assignments.
-                            This action cannot be undone.
+                            This action cannot be undone. This will permanently delete the developer account
+                            and remove their data from our servers.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteDeveloper}>
-                            Delete
+                          <AlertDialogCancel onClick={() => setSelectedDeveloper(null)}>
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleDeleteDeveloper}
+                            disabled={deleteDeveloperMutation.isPending}
+                          >
+                            {deleteDeveloperMutation.isPending ? 'Deleting...' : 'Delete'}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -279,12 +286,6 @@ export default function DevelopersPage() {
                 ))}
               </div>
             )}
-            
-            <div className="mt-4">
-              <Button variant="outline" onClick={fetchDevelopers} className="mt-4">
-                Refresh List
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>

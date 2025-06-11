@@ -3,26 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
-
-interface Chat {
-  id: string;
-  name: string;
-  lastMessage?: {
-    body: string;
-    timestamp: number;
-  };
-}
+import { whatsappService, Chat } from '@/services/whatsappService';
 
 export default function DeveloperDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [assignedChats, setAssignedChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,24 +25,34 @@ export default function DeveloperDashboard() {
     }
   }, [status, session, router]);
 
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role === 'developer') {
-      fetchAssignedChats();
-    }
-  }, [status, session]);
+  // React Query for fetching assigned chats
+  const { 
+    data, 
+    isLoading: loading, 
+    error: queryError, 
+    refetch: refetchChats 
+  } = useQuery({
+    queryKey: ['developerChats'],
+    queryFn: async () => {
+      const response = await whatsappService.getChats();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'developer',
+  });
 
-  const fetchAssignedChats = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/whatsapp/chats');
-      setAssignedChats(response.data.chats);
-    } catch (error) {
-      console.error('Error fetching assigned chats:', error);
-      setError('Failed to fetch assigned chats');
-    } finally {
-      setLoading(false);
+  // Handle query errors
+  useEffect(() => {
+    if (queryError) {
+      const errorMessage = queryError instanceof Error ? queryError.message : 'Failed to fetch assigned chats';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
-  };
+  }, [queryError]);
+
+  const assignedChats = data?.chats || [];
 
   if (status === 'loading') {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -60,6 +61,11 @@ export default function DeveloperDashboard() {
   if (status === 'authenticated' && session?.user?.role !== 'developer') {
     return null; // Will be redirected by useEffect
   }
+
+  const handleRefreshChats = () => {
+    setError(null);
+    refetchChats();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -81,11 +87,11 @@ export default function DeveloperDashboard() {
               <p>No chats assigned to you yet.</p>
             ) : (
               <div className="space-y-4">
-                {assignedChats.map((chat) => (
+                {assignedChats.map((chat: Chat) => (
                   <div 
-                    key={chat.id} 
+                    key={chat.id.user} 
                     className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/developer/chats/${chat.id}`)}
+                    onClick={() => router.push(`/developer/chats/${chat.id.user}`)}
                   >
                     <h3 className="font-medium">{chat.name}</h3>
                     {chat.lastMessage && (
@@ -99,7 +105,7 @@ export default function DeveloperDashboard() {
             )}
             
             <div className="mt-4">
-              <Button variant="outline" onClick={fetchAssignedChats} className="mt-4">
+              <Button variant="outline" onClick={handleRefreshChats} className="mt-4">
                 Refresh Chats
               </Button>
             </div>

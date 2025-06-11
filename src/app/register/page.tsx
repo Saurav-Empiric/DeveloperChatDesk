@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { authService, RegistrationData } from '@/services/authService';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,23 +18,42 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [canRegister, setCanRegister] = useState(false);
 
-  // Check if registration is allowed (no admin exists yet)
-  useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      try {
-        const response = await axios.get('/api/auth/registration-status');
-        setCanRegister(response.data.canRegister);
-      } catch (error) {
-        console.error('Error checking registration status:', error);
-        setError('Unable to check if registration is allowed');
+  // React Query for checking registration status
+  const { 
+    data: regStatusData, 
+    isLoading: checkingStatus,
+    error: regStatusError
+  } = useQuery({
+    queryKey: ['registrationStatus'],
+    queryFn: async () => {
+      const response = await authService.getRegistrationStatus();
+      if (!response.success) {
+        throw new Error(response.error);
       }
-    };
+      return response;
+    },
+  });
 
-    checkRegistrationStatus();
-  }, []);
+  const canRegister = regStatusData?.canRegister || false;
+
+  // React Query mutation for registration
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegistrationData) => {
+      const response = await authService.register(data);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: () => {
+      router.push('/login?registered=true');
+    },
+    onError: (error: Error) => {
+      console.error('Registration error:', error);
+      setError(error.message || 'An error occurred during registration');
+    },
+  });
 
   // Redirect if already logged in
   useEffect(() => {
@@ -41,6 +61,12 @@ export default function RegisterPage() {
       router.push('/');
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (regStatusError) {
+      setError('Failed to check registration status. Please try again.');
+    }
+  }, [regStatusError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,30 +81,11 @@ export default function RegisterPage() {
       return;
     }
     
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.post('/api/auth/register', {
-        name,
-        email,
-        password,
-      });
-      
-      if(!response.data.success) {
-        throw new Error(response.data.error);
-      }
-
-      router.push('/login?registered=true');
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      setError(error.response?.data?.error ?? 'An error occurred during registration');
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    registerMutation.mutate({ name, email, password });
   };
 
-  if (status === 'loading') {
+  if (status === 'loading' || checkingStatus) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
@@ -110,7 +117,7 @@ export default function RegisterPage() {
                   placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  disabled={loading}
+                  disabled={registerMutation.isPending}
                 />
               </div>
               
@@ -122,7 +129,7 @@ export default function RegisterPage() {
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
+                  disabled={registerMutation.isPending}
                 />
               </div>
               
@@ -133,7 +140,7 @@ export default function RegisterPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={registerMutation.isPending}
                 />
               </div>
               
@@ -144,7 +151,7 @@ export default function RegisterPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={registerMutation.isPending}
                 />
               </div>
               
@@ -152,8 +159,8 @@ export default function RegisterPage() {
                 <div className="text-red-500 text-sm">{error}</div>
               )}
               
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Creating Account...' : 'Register'}
+              <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                {registerMutation.isPending ? 'Creating Account...' : 'Register'}
               </Button>
               
               <div className="text-center text-sm">

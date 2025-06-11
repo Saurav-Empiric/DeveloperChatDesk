@@ -3,43 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
 import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-
-interface WhatsAppSession {
-  id: string;
-  name: string;
-  status: string;
-  me?: {
-    id: string;
-    pushName: string;
-  };
-}
+import { systemService, WahaStatus } from '@/services/systemService';
+import { whatsappService, WhatsAppSession } from '@/services/whatsappService';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [sessions, setSessions] = useState<WhatsAppSession[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [syncing, setSyncing] = useState<boolean>(false);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [wahaStatus, setWahaStatus] = useState<{
-    isRunning: boolean;
-    wahaApiUrl?: string;
-    version?: string;
-    errorMessage?: string;
-  }>({
-    isRunning: false
-  });
 
   useEffect(() => {
-    console.log('status: ', session)
     // Redirect if not logged in or not an admin
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -48,58 +29,103 @@ export default function AdminDashboard() {
     }
   }, [status, session, router]);
 
+  // React Query for checking WAHA status
+  const { 
+    data: wahaStatusData, 
+    isLoading: wahaStatusLoading,
+    error: wahaError,
+    refetch: refetchWahaStatus
+  } = useQuery({
+    queryKey: ['wahaStatus'],
+    queryFn: async () => {
+      const response = await systemService.getWahaStatus();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.wahaStatus;
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'admin',
+  });
+
+  // Update error state when there's an error from queries
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role === 'admin') {
-      checkWahaStatus();
-      syncAndFetchSessions();
+    if (wahaError) {
+      const errorMessage = wahaError instanceof Error ? wahaError.message : 'Failed to check WAHA status';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
-  }, [status, session]);
+  }, [wahaError]);
 
-  const checkWahaStatus = async () => {
-    try {
-      const response = await axios.get('/api/system/waha-status');
-      setWahaStatus(response.data);
-    } catch (error) {
-      console.error('Error checking WAHA status:', error);
-      setError('Failed to check WAHA service status');
-    }
+  const wahaStatus: WahaStatus = wahaStatusData || { 
+    isRunning: false, 
+    status: 'error', 
+    message: 'Service status unavailable'
   };
 
-  const syncSessions = async () => {
-    try {
-      setSyncing(true);
-      setSyncMessage(null);
-      const response = await axios.post('/api/whatsapp/sync-sessions');
-      setSyncMessage(response.data.message);
-      return response.data;
-    } catch (error) {
+  // React Query for fetching WhatsApp sessions
+  const { 
+    data: sessionsData, 
+    isLoading: sessionsLoading,
+    error: sessionsError,
+    refetch: refetchSessions
+  } = useQuery({
+    queryKey: ['whatsappSessions'],
+    queryFn: async () => {
+      const response = await whatsappService.getSessions();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'admin',
+  });
+
+  // Update error state when there's a sessions error
+  useEffect(() => {
+    if (sessionsError) {
+      const errorMessage = sessionsError instanceof Error ? sessionsError.message : 'Failed to fetch WhatsApp sessions';
+      console.error('Error fetching WhatsApp sessions:', errorMessage);
+    }
+  }, [sessionsError]);
+
+  const sessions: WhatsAppSession[] = sessionsData?.sessions || [];
+
+  // React Query mutation for syncing sessions
+  const syncSessionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await whatsappService.syncSessions();
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['whatsappSessions'] });
+      toast.success(data.message || 'Sessions synced successfully');
+    },
+    onError: (error: Error) => {
       console.error('Error syncing sessions:', error);
-      setError('Failed to sync WhatsApp sessions');
-      return null;
-    } finally {
-      setSyncing(false);
+      toast.error(error.message || 'Failed to sync WhatsApp sessions');
     }
-  };
+  });
 
   const syncAndFetchSessions = async () => {
-    // First sync sessions from WAHA to MongoDB
+    setError(null);
     if (wahaStatus.isRunning) {
-      await syncSessions();
+      try {
+        await syncSessionsMutation.mutateAsync();
+        await refetchSessions();
+      } catch (err) {
+        // Error already handled by mutation
+      }
+    } else {
+      toast.error('WAHA service is not running. Please start it first.');
     }
-    // Then fetch sessions
-    await fetchSessions();
   };
 
-  const fetchSessions = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/whatsapp/sessions');
-      setSessions(response.data.sessions ?? []);
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleRefreshStatus = () => {
+    setError(null);
+    refetchWahaStatus();
   };
 
   if (status === 'loading') {
@@ -112,7 +138,7 @@ export default function AdminDashboard() {
 
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard: {status}</h1>
+          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
           <p className="text-gray-600">Manage WhatsApp conversations and developers</p>
         </div>
 
@@ -152,12 +178,12 @@ export default function AdminDashboard() {
                   <Button 
                     variant="outline" 
                     onClick={syncAndFetchSessions}
-                    disabled={syncing || !wahaStatus.isRunning}
+                    disabled={syncSessionsMutation.isPending || !wahaStatus.isRunning}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Syncing...' : 'Sync Sessions'}
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncSessionsMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncSessionsMutation.isPending ? 'Syncing...' : 'Sync Sessions'}
                   </Button>
-                  <Button variant="outline" onClick={checkWahaStatus}>
+                  <Button variant="outline" onClick={handleRefreshStatus}>
                     Refresh Status
                   </Button>
                   <Button onClick={() => window.open('http://localhost:3000', '_blank')}>
@@ -167,9 +193,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {syncMessage && (
+              {syncSessionsMutation.data?.message && (
                 <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md">
-                  {syncMessage}
+                  {syncSessionsMutation.data.message}
                 </div>
               )}
 
@@ -207,7 +233,7 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {sessions.map((session) => (
+                  {sessions.map((session: WhatsAppSession) => (
                     <div key={session.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -251,11 +277,6 @@ export default function AdminDashboard() {
               >
                 View Chats
               </Button>
-              {sessions.length === 0 && wahaStatus.isRunning && (
-                <p className="text-sm text-amber-600 mt-2">
-                  No WhatsApp accounts connected. Connect one in WAHA dashboard first.
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -268,9 +289,12 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 mb-4">
-                Manage developers and their access permissions
+                Manage developer accounts who can access assigned chats
               </p>
-              <Button onClick={() => router.push('/admin/developers')} className="w-full">
+              <Button
+                onClick={() => router.push('/admin/developers')}
+                className="w-full"
+              >
                 Manage Developers
               </Button>
             </CardContent>
@@ -280,15 +304,19 @@ export default function AdminDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Assignments
+                System Settings
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 mb-4">
-                View and manage chat assignments to developers
+                Configure system settings, API access, and global preferences
               </p>
-              <Button onClick={() => router.push('/admin/assignments')} className="w-full">
-                View Assignments
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/settings')}
+                className="w-full"
+              >
+                System Settings
               </Button>
             </CardContent>
           </Card>
