@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authService } from '@/services/authService';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -65,7 +66,7 @@ export default function Home() {
   return (
     <div className="flex justify-center items-center h-screen">
       <div className="text-lg font-medium">
-        {checkingRegistration || status === 'loading' ? 'Loading...' : ''}
+        {checkingRegistration || status === 'loading' ? <Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" /> : ''}
         {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
       </div>
     </div>

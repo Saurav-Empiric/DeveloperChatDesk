@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
-import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { systemService, WahaStatus } from '@/services/systemService';
 import { whatsappService, WhatsAppSession } from '@/services/whatsappService';
 
@@ -112,12 +112,8 @@ export default function AdminDashboard() {
   const syncAndFetchSessions = async () => {
     setError(null);
     if (wahaStatus.isRunning) {
-      try {
         await syncSessionsMutation.mutateAsync();
         await refetchSessions();
-      } catch (err) {
-        // Error already handled by mutation
-      }
     } else {
       toast.error('WAHA service is not running. Please start it first.');
     }
@@ -129,7 +125,7 @@ export default function AdminDashboard() {
   };
 
   if (status === 'loading') {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" /></div>;
   }
 
   return (

@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Navbar from '@/components/Navbar';
-import { Phone, MessageSquare, Send, Search, Settings, MoreVertical } from 'lucide-react';
+import { Phone, MessageSquare, Send, Search, Settings, MoreVertical, Loader2 } from 'lucide-react';
 
 interface WhatsAppSession {
   id: string;
@@ -168,7 +168,11 @@ export default function AdminChats() {
   );
 
   if (status === 'loading' || loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" />
+      </div>
+    );
   }
 
   if (status === 'authenticated' && session?.user?.role !== 'admin') {
@@ -360,7 +364,7 @@ export default function AdminChats() {
                         placeholder="Type a message..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => {
+                        onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             sendMessage();
                           }

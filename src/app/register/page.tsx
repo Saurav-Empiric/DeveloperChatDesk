@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authService, RegistrationData } from '@/services/authService';
+import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,8 +21,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // React Query for checking registration status
-  const { 
-    data: regStatusData, 
+  const {
+    data: regStatusData,
     isLoading: checkingStatus,
     error: regStatusError
   } = useQuery({
@@ -70,7 +71,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
@@ -80,13 +81,17 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
-    
+
     setError(null);
     registerMutation.mutate({ name, email, password });
   };
 
   if (status === 'loading' || checkingStatus) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" />
+      </div>
+    );
   }
 
   return (
@@ -100,8 +105,8 @@ export default function RegisterPage() {
             <div className="text-center py-4">
               <p className="text-red-500 mb-4">Registration is not available.</p>
               <p>An admin account already exists. Please login instead.</p>
-              <Button 
-                className="mt-4" 
+              <Button
+                className="mt-4"
                 onClick={() => router.push('/login')}
               >
                 Go to Login
@@ -120,7 +125,7 @@ export default function RegisterPage() {
                   disabled={registerMutation.isPending}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -132,7 +137,7 @@ export default function RegisterPage() {
                   disabled={registerMutation.isPending}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -143,7 +148,7 @@ export default function RegisterPage() {
                   disabled={registerMutation.isPending}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -154,18 +159,18 @@ export default function RegisterPage() {
                   disabled={registerMutation.isPending}
                 />
               </div>
-              
+
               {error && (
                 <div className="text-red-500 text-sm">{error}</div>
               )}
-              
+
               <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                 {registerMutation.isPending ? 'Creating Account...' : 'Register'}
               </Button>
-              
+
               <div className="text-center text-sm">
-                <a 
-                  href="/login" 
+                <a
+                  href="/login"
                   className="text-blue-500 hover:underline"
                 >
                   Already have an account? Login
