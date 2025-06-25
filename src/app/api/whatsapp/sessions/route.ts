@@ -7,24 +7,23 @@ export async function GET(req: NextRequest) {
   try {
     // Get the authenticated session
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.log('server session: ', session)
     if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    
+
     // Get all sessions from WAHA
     const response = await wahaApi.getSessions();
-    
+
     // Filter sessions that are running/connected
-    const sessions = response.data.filter((session: any) => 
+    const sessions = response.data.filter((session: any) =>
       session.status === 'WORKING' || session.status === 'CONNECTED' || session.status === 'STARTING'
     );
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       sessions: sessions.map((session: any) => ({
         id: session.name,
         name: session.name,

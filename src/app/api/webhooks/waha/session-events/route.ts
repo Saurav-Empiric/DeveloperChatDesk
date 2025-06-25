@@ -7,33 +7,31 @@ export async function POST(req: NextRequest) {
   try {
     // Parse the webhook payload
     const payload = await req.json();
-    
+
     // Extract relevant information
     const { event, session: sessionId, data } = payload;
-    
-    console.log('WAHA Session Event:', { event, sessionId, status: data?.status });
-    
+
     // Connect to the database
     await connectToDatabase();
-    
+
     // Handle different webhook events
     switch (event) {
       case 'session.status':
         await handleSessionStatusChange(sessionId, data);
         break;
-        
+
       case 'session.authenticated':
         await handleSessionAuthenticated(sessionId, data);
         break;
-        
+
       case 'session.disconnected':
         await handleSessionDisconnected(sessionId, data);
         break;
-        
+
       default:
         console.log(`Unhandled session event: ${event}`);
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error handling session webhook:', error);
@@ -43,10 +41,10 @@ export async function POST(req: NextRequest) {
 
 async function handleSessionStatusChange(sessionId: string, data: any) {
   const isActive = data.status === 'WORKING' || data.status === 'CONNECTED';
-  
+
   // Check if session exists in database
   const existingSession = await WhatsAppSession.findOne({ sessionId });
-  
+
   if (existingSession) {
     // Update existing session
     await WhatsAppSession.findByIdAndUpdate(
@@ -57,7 +55,7 @@ async function handleSessionStatusChange(sessionId: string, data: any) {
     // Session is active but not in database
     // Try to find an admin user to associate with this session
     const adminUser = await User.findOne({ role: 'admin' }).sort({ createdAt: 1 });
-    
+
     if (adminUser) {
       // Create new session associated with the first admin
       await WhatsAppSession.create({
@@ -65,7 +63,6 @@ async function handleSessionStatusChange(sessionId: string, data: any) {
         userId: adminUser._id,
         isActive: true,
       });
-      console.log(`Created new session ${sessionId} for admin ${adminUser.email}`);
     } else {
       console.warn(`No admin user found to associate with session ${sessionId}`);
     }
@@ -75,7 +72,7 @@ async function handleSessionStatusChange(sessionId: string, data: any) {
 async function handleSessionAuthenticated(sessionId: string, data: any) {
   // Session has been authenticated (QR code scanned)
   const existingSession = await WhatsAppSession.findOne({ sessionId });
-  
+
   if (existingSession) {
     await WhatsAppSession.findByIdAndUpdate(
       existingSession._id,
@@ -84,14 +81,13 @@ async function handleSessionAuthenticated(sessionId: string, data: any) {
   } else {
     // Try to find an admin user to associate with this session
     const adminUser = await User.findOne({ role: 'admin' }).sort({ createdAt: 1 });
-    
+
     if (adminUser) {
       await WhatsAppSession.create({
         sessionId,
         userId: adminUser._id,
         isActive: true,
       });
-      console.log(`Created authenticated session ${sessionId} for admin ${adminUser.email}`);
     }
   }
 }
@@ -103,5 +99,4 @@ async function handleSessionDisconnected(sessionId: string, data: any) {
     { isActive: false }
   );
   
-  console.log(`Session ${sessionId} disconnected`);
 } 

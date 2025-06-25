@@ -122,7 +122,6 @@ export default function AdminChats() {
 
   const fetchMessages = async () => {
     if (!selectedChat) return;
-    console.log('selectedChat: ', selectedChat);
     try {
       const response = await axios.get(`/api/whatsapp/messages?sessionId=${selectedSession}&chatId=${selectedChat.id.user}`);
       setMessages(response.data.messages ?? []);
