@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-const DEFAULT_API_URL = process.env.WAHA_API_URL!;
+const DEFAULT_API_URL = process.env.NEXT_PUBLIC_WAHA_URL!;
 const DEFAULT_API_KEY = process.env.WAHA_API_KEY;
 const DEBUG_API = process.env.DEBUG_API === 'true';
 

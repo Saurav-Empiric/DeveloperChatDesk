@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
 import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
-import { systemService, WahaStatus } from '@/services/systemService';
-import { whatsappService, WhatsAppSession } from '@/services/whatsappService';
+import { getWahaStatus, WahaStatus } from '@/services/systemService';
+import { getSessions, syncSessions, WhatsAppSession } from '@/services/whatsappService';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -20,25 +20,16 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Redirect if not logged in or not an admin
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && session?.user?.role !== 'admin') {
-      router.push('/developer/dashboard');
-    }
-  }, [status, session, router]);
-
   // React Query for checking WAHA status
-  const { 
-    data: wahaStatusData, 
+  const {
+    data: wahaStatusData,
     isLoading: wahaStatusLoading,
     error: wahaError,
     refetch: refetchWahaStatus
   } = useQuery({
     queryKey: ['wahaStatus'],
     queryFn: async () => {
-      const response = await systemService.getWahaStatus();
+      const response = await getWahaStatus();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -47,31 +38,16 @@ export default function AdminDashboard() {
     enabled: status === 'authenticated' && session?.user?.role === 'admin',
   });
 
-  // Update error state when there's an error from queries
-  useEffect(() => {
-    if (wahaError) {
-      const errorMessage = wahaError instanceof Error ? wahaError.message : 'Failed to check WAHA status';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    }
-  }, [wahaError]);
-
-  const wahaStatus: WahaStatus = wahaStatusData || { 
-    isRunning: false, 
-    status: 'error', 
-    message: 'Service status unavailable'
-  };
-
   // React Query for fetching WhatsApp sessions
-  const { 
-    data: sessionsData, 
+  const {
+    data: sessionsData,
     isLoading: sessionsLoading,
     error: sessionsError,
     refetch: refetchSessions
   } = useQuery({
     queryKey: ['whatsappSessions'],
     queryFn: async () => {
-      const response = await whatsappService.getSessions();
+      const response = await getSessions();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -80,20 +56,18 @@ export default function AdminDashboard() {
     enabled: status === 'authenticated' && session?.user?.role === 'admin',
   });
 
-  // Update error state when there's a sessions error
-  useEffect(() => {
-    if (sessionsError) {
-      const errorMessage = sessionsError instanceof Error ? sessionsError.message : 'Failed to fetch WhatsApp sessions';
-      console.error('Error fetching WhatsApp sessions:', errorMessage);
-    }
-  }, [sessionsError]);
+  const wahaStatus: WahaStatus = wahaStatusData || {
+    isRunning: false,
+    status: 'error',
+    message: 'Service status unavailable'
+  };
 
   const sessions: WhatsAppSession[] = sessionsData?.sessions || [];
 
   // React Query mutation for syncing sessions
   const syncSessionsMutation = useMutation({
     mutationFn: async () => {
-      const response = await whatsappService.syncSessions();
+      const response = await syncSessions();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -112,8 +86,8 @@ export default function AdminDashboard() {
   const syncAndFetchSessions = async () => {
     setError(null);
     if (wahaStatus.isRunning) {
-        await syncSessionsMutation.mutateAsync();
-        await refetchSessions();
+      await syncSessionsMutation.mutateAsync();
+      await refetchSessions();
     } else {
       toast.error('WAHA service is not running. Please start it first.');
     }
@@ -123,6 +97,33 @@ export default function AdminDashboard() {
     setError(null);
     refetchWahaStatus();
   };
+
+  useEffect(() => {
+    // Redirect if not logged in or not an admin
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated' && session?.user?.role !== 'admin') {
+      router.push('/developer/dashboard');
+    }
+  }, [status, session, router]);
+
+  // Update error state when there's an error from queries
+  useEffect(() => {
+    if (wahaError) {
+      const errorMessage = wahaError instanceof Error ? wahaError.message : 'Failed to check WAHA status';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+  }, [wahaError]);
+
+  // Update error state when there's a sessions error
+  useEffect(() => {
+    if (sessionsError) {
+      const errorMessage = sessionsError instanceof Error ? sessionsError.message : 'Failed to fetch WhatsApp sessions';
+      console.error('Error fetching WhatsApp sessions:', errorMessage);
+    }
+  }, [sessionsError]);
+
 
   if (status === 'loading') {
     return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" /></div>;
@@ -171,8 +172,8 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={syncAndFetchSessions}
                     disabled={syncSessionsMutation.isPending || !wahaStatus.isRunning}
                   >
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
                   <Button variant="outline" onClick={handleRefreshStatus}>
                     Refresh Status
                   </Button>
-                  <Button onClick={() => window.open('http://localhost:3000', '_blank')}>
+                  <Button onClick={() => window.open(process.env.NEXT_PUBLIC_WAHA_URL, '_blank')}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Open WAHA Dashboard
                   </Button>
@@ -308,7 +309,6 @@ export default function AdminDashboard() {
                 Configure system settings, API access, and global preferences
               </p>
               <Button
-                variant="outline"
                 onClick={() => router.push('/admin/settings')}
                 className="w-full"
               >

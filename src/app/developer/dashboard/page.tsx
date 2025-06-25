@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
-import { whatsappService, Chat } from '@/services/whatsappService';
+import { getChats, Chat } from '@/services/whatsappService';
 
 export default function DeveloperDashboard() {
   const { data: session, status } = useSession();
@@ -34,7 +34,7 @@ export default function DeveloperDashboard() {
   } = useQuery({
     queryKey: ['developerChats'],
     queryFn: async () => {
-      const response = await whatsappService.getChats();
+      const response = await getChats();
       if (!response.success) {
         throw new Error(response.error);
       }

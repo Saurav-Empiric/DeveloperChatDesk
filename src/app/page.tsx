@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { authService } from '@/services/authService';
+import { getRegistrationStatus } from '@/services/authService';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
@@ -14,14 +14,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   // React Query for checking registration status
-  const { 
-    data: regStatusData, 
+  const {
+    data: regStatusData,
     isLoading: checkingRegistration,
     error: regStatusError
   } = useQuery({
     queryKey: ['homeRegistrationStatus'],
     queryFn: async () => {
-      const response = await authService.getRegistrationStatus();
+      const response = await getRegistrationStatus();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -33,9 +33,9 @@ export default function Home() {
   // Handle errors from registration status check
   useEffect(() => {
     if (regStatusError) {
-      const errorMessage = regStatusError instanceof Error ? 
-                          regStatusError.message : 
-                          'Failed to check registration status';
+      const errorMessage = regStatusError instanceof Error ?
+        regStatusError.message :
+        'Failed to check registration status';
       setError(errorMessage);
       toast.error(errorMessage);
       // On error, default to login

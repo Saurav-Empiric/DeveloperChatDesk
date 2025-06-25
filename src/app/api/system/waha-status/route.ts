@@ -4,7 +4,7 @@ import axios from 'axios';
 export async function GET() {
   try {
     // Get WAHA API URL from runtime config
-    const wahaApiUrl = process.env.WAHA_API_URL!;
+    const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_URL!;
     const wahaApiKey = process.env.WAHA_API_KEY;
     
     // Create headers

@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authService, RegistrationData } from '@/services/authService';
+import { getRegistrationStatus, register, RegistrationData } from '@/services/authService';
 import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -28,7 +28,7 @@ export default function RegisterPage() {
   } = useQuery({
     queryKey: ['registrationStatus'],
     queryFn: async () => {
-      const response = await authService.getRegistrationStatus();
+      const response = await getRegistrationStatus();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -41,7 +41,7 @@ export default function RegisterPage() {
   // React Query mutation for registration
   const registerMutation = useMutation({
     mutationFn: async (data: RegistrationData) => {
-      const response = await authService.register(data);
+      const response = await register(data);
       if (!response.success) {
         throw new Error(response.error);
       }
