@@ -1,5 +1,7 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { UserCheck } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Extended Chat type for UI purposes
 interface Chat {
@@ -18,6 +20,10 @@ interface Chat {
   isGroup: boolean;
   isAssigned?: boolean;
   developerId?: string;
+  developer?: {
+    name: string;
+    email: string;
+  };
 }
 
 interface ChatItemProps {
@@ -59,16 +65,36 @@ export const ChatItem = ({
           {chat.lastMessage.text}
         </p>
         <div className="flex items-center justify-between mt-2">
-          {chat.unreadCount > 0 && (
-            <Badge variant="default" className="bg-green-500">
-              {chat.unreadCount}
-            </Badge>
-          )}
-          {chat.isAssigned && (
-            <Badge variant="secondary" className="text-xs">
-              Assigned
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {chat.unreadCount > 0 && (
+              <Badge variant="default" className="bg-green-500">
+                {chat.unreadCount}
+              </Badge>
+            )}
+            {chat.isAssigned && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center">
+                      <Badge variant="outline" className="flex gap-1 text-xs text-green-600 border-green-200 bg-green-50">
+                        <UserCheck className="h-3 w-3" />
+                        Assigned
+                      </Badge>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {chat.developer ? (
+                      <p className="text-xs">
+                        Assigned to: <span className="font-medium">{chat.developer.name}</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs">Assigned to a developer</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
       </div>
     </div>

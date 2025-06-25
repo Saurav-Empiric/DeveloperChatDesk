@@ -11,6 +11,8 @@ export interface Chat {
     body: string;
     timestamp: number;
   };
+  isAssigned?: boolean;
+  developerId?: string;
 }
 
 export interface Message {
@@ -48,6 +50,39 @@ export interface WhatsAppResponse {
   messageId?: string;
 }
 
+export interface Assignment {
+  _id: string;
+  developerId: string;
+  chatId: string;
+  chatName: string;
+  assignedAt: string;
+  isActive: boolean;
+}
+
+export interface AssignmentData {
+  developerId: string;
+  chatId: string;
+  chatName: string;
+}
+
+export interface AssignmentResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  assignments?: Assignment[];
+  assignment?: Assignment;
+  isAssigned?: boolean;
+  unassignedChat?: string;
+  chatDetails?: {
+    id: string;
+    name: string;
+  };
+  developerDetails?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
 
 /**
  * Get all chats
@@ -147,3 +182,104 @@ export const syncSessions = async (): Promise<WhatsAppResponse> => {
     return { success: false, error: errorMessage };
   }
 }
+
+/**
+ * Get all chat assignments
+ */
+export const getAssignments = async (): Promise<AssignmentResponse> => {
+  try {
+    const response = await axios.get('/api/assignments');
+    return {
+      success: true,
+      assignments: response.data.assignments
+    };
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    const errorMessage = axiosError.response?.data?.error ||
+      'Failed to fetch chat assignments';
+    console.error('Error fetching assignments:', error);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Get assignment by chat ID
+ */
+export const getAssignmentByChatId = async (chatId: string): Promise<AssignmentResponse> => {
+  try {
+    const response = await axios.get(`/api/assignments?chatId=${chatId}`);
+    return {
+      success: true,
+      isAssigned: response.data.isAssigned,
+      assignment: response.data.assignment
+    };
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    const errorMessage = axiosError.response?.data?.error ||
+      'Failed to fetch chat assignment';
+    console.error('Error fetching assignment:', error);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Create a new chat assignment
+ */
+export const createAssignment = async (data: AssignmentData): Promise<AssignmentResponse> => {
+  try {
+    const response = await axios.post('/api/assignments', data);
+    return {
+      success: true,
+      message: response.data.message || 'Chat assigned successfully',
+      assignment: response.data.assignment
+    };
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    const errorMessage = axiosError.response?.data?.error ||
+      'Failed to assign chat';
+    console.error('Error assigning chat:', error);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Delete a chat assignment by ID
+ */
+export const deleteAssignment = async (assignmentId: string): Promise<AssignmentResponse> => {
+  try {
+    const response = await axios.delete(`/api/assignments?id=${assignmentId}`);
+    return {
+      success: true,
+      message: 'Assignment removed successfully',
+      unassignedChat: response.data.unassignedChat
+    };
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    const errorMessage = axiosError.response?.data?.error ||
+      'Failed to remove assignment';
+    console.error('Error removing assignment:', error);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Delete a chat assignment by chat ID
+ */
+export const unassignChat = async (chatId: string): Promise<AssignmentResponse> => {
+  try {
+    const response = await axios.delete(`/api/assignments?chatId=${chatId}`);
+    return {
+      success: true,
+      message: response.data.message || 'Chat unassigned successfully',
+      unassignedChat: response.data.unassignedChat,
+      chatDetails: response.data.chatDetails,
+      developerDetails: response.data.developerDetails
+    };
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    const errorMessage = axiosError.response?.data?.error ||
+      'Failed to unassign chat';
+    console.error('Error unassigning chat:', error);
+    return { success: false, error: errorMessage };
+  }
+};

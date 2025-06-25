@@ -43,10 +43,34 @@ export async function POST(req: NextRequest) {
     });
     
     if (existingAssignment) {
+      // If assigned to a different developer, update the assignment
+      if (existingAssignment.developerId.toString() !== developerId) {
+        existingAssignment.isActive = false;
+        await existingAssignment.save();
+        
+        // Create new assignment
+        const newAssignment = await ChatAssignment.create({
+          developerId,
+          chatId,
+          chatName,
+          assignedAt: new Date(),
+          isActive: true,
+        });
+        
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Chat reassigned successfully', 
+          assignment: newAssignment,
+          previousAssignment: existingAssignment
+        });
+      }
+      
+      // If assigned to the same developer, return existing assignment
       return NextResponse.json({ 
-        error: 'Chat is already assigned to a developer',
-        currentAssignment: existingAssignment
-      }, { status: 400 });
+        success: true,
+        message: 'Chat is already assigned to this developer',
+        assignment: existingAssignment
+      });
     }
     
     // Create the assignment
@@ -78,7 +102,33 @@ export async function GET(req: NextRequest) {
     // Connect to the database
     await connectToDatabase();
     
+    // Get the chatId from query parameters if it exists
+    const { searchParams } = new URL(req.url);
+    const chatId = searchParams.get('chatId');
+    
     if (session.user.role === 'admin') {
+      if (chatId) {
+        // If chatId is provided, get assignment for that specific chat
+        const assignment = await ChatAssignment.findOne({ 
+          chatId, 
+          isActive: true 
+        }).populate('developerId');
+        
+        if (!assignment) {
+          return NextResponse.json({ 
+            success: true, 
+            assignment: null, 
+            isAssigned: false 
+          });
+        }
+        
+        return NextResponse.json({ 
+          success: true, 
+          assignment, 
+          isAssigned: true 
+        });
+      }
+      
       // Admins can see all assignments
       const assignments = await ChatAssignment.find({ isActive: true })
         .populate('developerId')
@@ -93,6 +143,25 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
       }
       
+      if (chatId) {
+        // If chatId is provided, check if this specific chat is assigned to the developer
+        const assignment = await ChatAssignment.findOne({ 
+          developerId: developer._id,
+          chatId, 
+          isActive: true 
+        });
+        
+        if (!assignment) {
+          return NextResponse.json({ 
+            success: false, 
+            error: 'Chat not assigned to you' 
+          }, { status: 403 });
+        }
+        
+        return NextResponse.json({ success: true, assignment });
+      }
+      
+      // Get all assignments for this developer
       const assignments = await ChatAssignment.find({
         developerId: developer._id,
         isActive: true,
@@ -123,29 +192,85 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     
-    // Get the assignment ID from the query params
+    // Get the assignment ID or chat ID from the query params
     const { searchParams } = new URL(req.url);
     const assignmentId = searchParams.get('id');
+    const chatId = searchParams.get('chatId');
+    const developerId = searchParams.get('developerId');
     
-    if (!assignmentId) {
-      return NextResponse.json({ error: 'Assignment ID is required' }, { status: 400 });
+    if (!assignmentId && !chatId) {
+      return NextResponse.json({ error: 'Assignment ID or Chat ID is required' }, { status: 400 });
     }
     
     // Connect to the database
     await connectToDatabase();
     
-    // Deactivate the assignment
-    const assignment = await ChatAssignment.findByIdAndUpdate(
-      assignmentId,
-      { isActive: false },
-      { new: true }
-    );
+    let assignment;
+    let chatDetails = null;
+    let developerDetails = null;
+    
+    if (assignmentId) {
+      // Deactivate the assignment by ID
+      assignment = await ChatAssignment.findByIdAndUpdate(
+        assignmentId,
+        { isActive: false },
+        { new: true }
+      ).populate('developerId');
+
+      if (assignment) {
+        chatDetails = { 
+          id: assignment.chatId, 
+          name: assignment.chatName 
+        };
+      }
+    } else if (chatId) {
+      // Find the active assignment for this chat
+      const existingAssignment = await ChatAssignment.findOne({
+        chatId,
+        isActive: true,
+      }).populate('developerId');
+
+      if (existingAssignment) {
+        chatDetails = { 
+          id: existingAssignment.chatId, 
+          name: existingAssignment.chatName 
+        };
+
+        if (existingAssignment.developerId) {
+          const developer = await Developer.findById(existingAssignment.developerId)
+            .populate('userId');
+          
+          if (developer) {
+            developerDetails = {
+              id: developer._id,
+              name: developer.userId?.name || 'Unknown',
+              email: developer.userId?.email || ''
+            };
+          }
+        }
+
+        // Deactivate the assignment
+        assignment = await ChatAssignment.findByIdAndUpdate(
+          existingAssignment._id,
+          { isActive: false },
+          { new: true }
+        );
+      }
+    }
     
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true, 
+      unassignedChat: chatId || assignment.chatId,
+      chatDetails,
+      developerDetails,
+      message: developerDetails 
+        ? `Successfully unassigned ${developerDetails.name} from this chat` 
+        : 'Successfully unassigned this chat'
+    });
   } catch (error) {
     console.error('Error deleting chat assignment:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

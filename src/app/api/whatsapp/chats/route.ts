@@ -55,54 +55,66 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
-        // Get all chats from WAHA
-        const response = await wahaApi.getChats(sessionId);
+      // Get all chats from WAHA
+      const response = await wahaApi.getChats(sessionId);
 
-        // Get all chat assignments for this session
-        const assignments = await ChatAssignment.find({ isActive: true });
+      // Get all chat assignments for this session
+      const assignments = await ChatAssignment.find({ isActive: true })
+        .populate('developerId');
 
-        // Create a map of chat IDs to developer IDs
-        const chatAssignments = assignments.reduce((map, assignment) => {
-          map[assignment.chatId] = assignment.developerId;
-          return map;
-        }, {} as Record<string, any>);
+      // Create a map of chat IDs to assignments with developer details
+      const chatAssignments = assignments.reduce((map, assignment) => {
+        map[assignment.chatId] = {
+          id: assignment._id,
+          developerId: assignment.developerId._id,
+          developer: assignment.developerId ? {
+            name: assignment.developerId.userId?.name || 'Unknown',
+            email: assignment.developerId.userId?.email || ''
+          } : null
+        };
+        return map;
+      }, {} as Record<string, any>);
 
-        // Add assignment information to each chat
-        const chats = response.data.map((chat: any) => ({
+      // Add assignment information to each chat
+      const chats = response.data.map((chat: any) => {
+        const assignment = chatAssignments[chat.id];
+        return {
           ...chat,
-          isAssigned: !!chatAssignments[chat.id],
-          developerId: chatAssignments[chat.id] || null,
-        }));
+          isAssigned: !!assignment,
+          developerId: assignment ? assignment.developerId : null,
+          developer: assignment ? assignment.developer : null
+        };
+      });
 
-        return NextResponse.json({ success: true, chats });
-      } else if (session.user.role === 'developer') {
-        // Developer can only access chats assigned to them
-        const developer = await Developer.findOne({ userId: session.user.id });
+      return NextResponse.json({ success: true, chats });
+    } else if (session.user.role === 'developer') {
+      // Developer can only access chats assigned to them
+      const developer = await Developer.findOne({ userId: session.user.id });
 
-        if (!developer) {
-          return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
-        }
+      if (!developer) {
+        return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
+      }
 
-        // Get assignments for this developer
-        const assignments = await ChatAssignment.find({
-          developerId: developer._id,
-          isActive: true,
-        });
+      // Get assignments for this developer
+      const assignments = await ChatAssignment.find({
+        developerId: developer._id,
+        isActive: true,
+      });
 
-        // Get assigned chat IDs
-        const assignedChatIds = assignments.map(assignment => assignment.chatId);
+      // Get assigned chat IDs
+      const assignedChatIds = assignments.map(assignment => assignment.chatId);
 
-        // Get all chats from WAHA
-        const response = await wahaApi.getChats(sessionId);
+      // Get all chats from WAHA
+      const response = await wahaApi.getChats(sessionId);
 
-        // Filter chats to only include those assigned to the developer
-        const chats = response.data.filter((chat: any) => 
-          assignedChatIds.includes(chat.id)
-        );
+      // Filter chats to only include those assigned to the developer
+      const chats = response.data.filter((chat: any) => 
+        assignedChatIds.includes(chat.id)
+      );
 
-        return NextResponse.json({ success: true, chats });
-      } else {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ success: true, chats });
+    } else {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
   } catch (error) {
     console.error('Error getting WhatsApp chats:', error);

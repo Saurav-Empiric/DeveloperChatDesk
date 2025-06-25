@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
-import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2, UserCheck } from 'lucide-react';
 import { getWahaStatus, WahaStatus } from '@/services/systemService';
 import { getSessions, syncSessions, WhatsAppSession } from '@/services/whatsappService';
 
@@ -300,19 +300,21 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                System Settings
+                <MessageSquare className="h-5 w-5" />
+                <UserCheck className="h-5 w-5" />
+                Chat Assignments
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 mb-4">
-                Configure system settings, API access, and global preferences
+                View and manage which developers are assigned to which chats
               </p>
               <Button
-                onClick={() => router.push('/admin/settings')}
+                onClick={() => router.push('/admin/chats?tab=assignments')}
+                disabled={!wahaStatus.isRunning || sessions.length === 0}
                 className="w-full"
               >
-                System Settings
+                Manage Assignments
               </Button>
             </CardContent>
           </Card>
