@@ -1,25 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import Navbar from '@/components/Navbar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +18,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { developerService, Developer, DeveloperData } from '@/services/developerService';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { type Developer, type DeveloperData, addDeveloper, deleteDeveloper, getDevelopers } from '@/services/developerService';
 
 export default function DevelopersPage() {
   const { data: session, status } = useSession();
@@ -57,15 +57,15 @@ export default function DevelopersPage() {
   }, [status, session, router]);
 
   // React Query for fetching developers
-  const { 
-    data, 
-    isLoading: loading, 
+  const {
+    data,
+    isLoading: loading,
     error: fetchError,
     refetch: refetchDevelopers
   } = useQuery({
     queryKey: ['developers'],
     queryFn: async () => {
-      const response = await developerService.getDevelopers();
+      const response = await getDevelopers();
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -73,15 +73,15 @@ export default function DevelopersPage() {
     },
     enabled: status === 'authenticated' && session?.user?.role === 'admin',
   });
-  
+
   const developers = data?.developers || [];
-  const error = fetchError instanceof Error ? fetchError.message : 
-               (fetchError ? 'Failed to fetch developers' : null);
+  const error = fetchError instanceof Error ? fetchError.message :
+    (fetchError ? 'Failed to fetch developers' : null);
 
   // React Query mutation for adding developer
   const addDeveloperMutation = useMutation({
     mutationFn: async (developerData: DeveloperData) => {
-      const response = await developerService.addDeveloper(developerData);
+      const response = await addDeveloper(developerData);
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -93,7 +93,7 @@ export default function DevelopersPage() {
       setEmail('');
       setPassword('');
       setOpenAddDialog(false);
-      
+
       // Refresh the list
       queryClient.invalidateQueries({ queryKey: ['developers'] });
       toast.success(data.message || 'Developer added successfully');
@@ -107,7 +107,7 @@ export default function DevelopersPage() {
   // React Query mutation for deleting developer
   const deleteDeveloperMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await developerService.deleteDeveloper(id);
+      const response = await deleteDeveloper(id);
       if (!response.success) {
         throw new Error(response.error);
       }
@@ -154,11 +154,11 @@ export default function DevelopersPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Developers</h1>
-          
+
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogTrigger asChild>
               <Button>Add Developer</Button>
@@ -170,7 +170,7 @@ export default function DevelopersPage() {
                   Create a new developer account. They will be able to login and manage assigned clients.
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
@@ -181,7 +181,7 @@ export default function DevelopersPage() {
                     placeholder="Developer's name"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -192,7 +192,7 @@ export default function DevelopersPage() {
                     placeholder="developer@example.com"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
@@ -203,21 +203,21 @@ export default function DevelopersPage() {
                     placeholder="Create a password"
                   />
                 </div>
-                
+
                 {formError && (
                   <div className="text-red-500 text-sm">{formError}</div>
                 )}
               </div>
-              
+
               <DialogFooter>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setOpenAddDialog(false)}
                   disabled={addDeveloperMutation.isPending}
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleAddDeveloper}
                   disabled={addDeveloperMutation.isPending}
                 >
@@ -227,7 +227,7 @@ export default function DevelopersPage() {
             </DialogContent>
           </Dialog>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Manage Developers</CardTitle>
@@ -242,19 +242,19 @@ export default function DevelopersPage() {
             ) : (
               <div className="space-y-4">
                 {developers.map((developer) => (
-                  <div 
-                    key={developer._id} 
+                  <div
+                    key={developer._id}
                     className="p-4 border rounded-lg flex justify-between items-center"
                   >
                     <div>
                       <h3 className="font-medium">{developer.userId.name}</h3>
                       <p className="text-sm text-gray-500">{developer.userId.email}</p>
                     </div>
-                    
+
                     <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                       <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="destructive" 
+                        <Button
+                          variant="destructive"
                           size="sm"
                           onClick={() => setSelectedDeveloper(developer)}
                         >
@@ -273,7 +273,7 @@ export default function DevelopersPage() {
                           <AlertDialogCancel onClick={() => setSelectedDeveloper(null)}>
                             Cancel
                           </AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             onClick={handleDeleteDeveloper}
                             disabled={deleteDeveloperMutation.isPending}
                           >

@@ -1,42 +1,38 @@
 'use client';
 
 import Navbar from '@/components/Navbar';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getDevelopers } from '@/services/developerService';
 import {
+  getAssignments,
   getChats,
   getMessages,
   getSessions,
   sendMessage as sendMessageService,
+  unassignChat,
   type MessageData,
   type Chat as ServiceChat,
-  type Message as ServiceMessage,
-  getAssignments,
-  getAssignmentByChatId,
-  createAssignment,
-  deleteAssignment,
-  unassignChat,
+  type Message as ServiceMessage
 } from '@/services/whatsappService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { developerService } from '@/services/developerService';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 // Import chat components
 import {
+  AssignChatDialog,
   ChatHeader,
   ChatSidebar,
-  ErrorMessage,
   LoadingSpinner,
   MessageInput,
   MessagesArea,
   NoChatSelectedState,
   NoSessionsState,
   SessionSelector,
-  AssignChatDialog,
   type Chat,
   type Message
 } from '@/components/admin/chat';
@@ -68,10 +64,23 @@ const transformMessage = (serviceMessage: ServiceMessage): Message => ({
   isFromMe: serviceMessage.from === 'me'
 });
 
+// Define interfaces for type safety
+interface Developer {
+  _id: string;
+  userId: {
+    name: string;
+    email: string;
+  };
+}
+
+interface DevelopersResponse {
+  success: boolean;
+  developers: Developer[];
+}
+
 export default function AdminChats() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedSession, setSelectedSession] = useState<string>('');
@@ -166,6 +175,40 @@ export default function AdminChats() {
     },
   });
 
+
+  // React Query for assignments
+  const {
+    data: assignmentsData,
+    isLoading: assignmentsLoading,
+    refetch: refetchAssignments
+  } = useQuery({
+    queryKey: ['assignments'],
+    queryFn: async () => {
+      const response = await getAssignments();
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch assignments');
+      }
+      return response.assignments || [];
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
+  });
+
+  // React Query for developers (needed for assignments view)
+  const {
+    data: developersData,
+    isLoading: developersLoading,
+  } = useQuery({
+    queryKey: ['developers'],
+    queryFn: async () => {
+      const response = await getDevelopers();
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch developers');
+      }
+      return response;
+    },
+    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
+  });
+
   // Transform data
   const chats = useMemo(() => rawChats.map(transformChat), [rawChats]);
   const messages = useMemo(() => {
@@ -242,61 +285,6 @@ export default function AdminChats() {
     }
   }, [selectedSession, refetchChats]);
 
-  // React Query for assignments
-  const {
-    data: assignmentsData,
-    isLoading: assignmentsLoading,
-    refetch: refetchAssignments
-  } = useQuery({
-    queryKey: ['assignments'],
-    queryFn: async () => {
-      const response = await getAssignments();
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch assignments');
-      }
-      return response.assignments || [];
-    },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
-  });
-
-  // React Query for developers (needed for assignments view)
-  const {
-    data: developersData,
-    isLoading: developersLoading,
-  } = useQuery({
-    queryKey: ['developers'],
-    queryFn: async () => {
-      const response = await developerService.getDevelopers();
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch developers');
-      }
-      return response;
-    },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
-  });
-
-  // Define interfaces for type safety
-  interface Developer {
-    _id: string;
-    userId: {
-      name: string;
-      email: string;
-    };
-  }
-
-  interface DevelopersResponse {
-    success: boolean;
-    developers: Developer[];
-  }
-
-  useEffect(() => {
-    // If tab is provided in URL, set it as active
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'assignments') {
-      setActiveTab('assignments');
-    }
-  }, [searchParams]);
-
   // Handle tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -326,24 +314,24 @@ export default function AdminChats() {
   // Process assignments data for display
   const assignments = useMemo(() => {
     if (!assignmentsData) return [];
-    
+
     // Map developers to a lookup object
     // Make sure developers is an array before using reduce
     const developersResponse = developersData as DevelopersResponse | undefined;
     const developers: Developer[] = developersResponse?.developers || [];
-    
+
     const developerLookup = developers.reduce((acc: Record<string, Developer>, dev: Developer) => {
       acc[dev._id] = dev;
       return acc;
     }, {});
-    
+
     return assignmentsData.map((assignment: any) => ({
       ...assignment,
       developer: assignment.developerId && developerLookup[assignment.developerId.toString()]
         ? {
-            name: developerLookup[assignment.developerId.toString()].userId?.name || 'Unknown',
-            email: developerLookup[assignment.developerId.toString()].userId?.email || '',
-          }
+          name: developerLookup[assignment.developerId.toString()].userId?.name || 'Unknown',
+          email: developerLookup[assignment.developerId.toString()].userId?.email || '',
+        }
         : null
     }));
   }, [assignmentsData, developersData]);
@@ -369,7 +357,7 @@ export default function AdminChats() {
 
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-6">WhatsApp Chats</h1>
-        
+
         {/* Session selector */}
         <div className="mb-6">
           <SessionSelector
@@ -389,7 +377,7 @@ export default function AdminChats() {
               <TabsTrigger value="chats">Chats</TabsTrigger>
               <TabsTrigger value="assignments">Assignments</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="chats" className="mt-0">
               <div className="flex bg-white rounded-lg shadow-lg h-[calc(100vh-280px)]">
                 {/* Chat List Sidebar */}
@@ -407,7 +395,7 @@ export default function AdminChats() {
                 <div className="flex-1 flex flex-col">
                   {selectedChat ? (
                     <>
-                      <ChatHeader 
+                      <ChatHeader
                         selectedChat={selectedChat}
                         onOpenAssignDialog={handleOpenAssignDialog}
                       />
@@ -431,11 +419,11 @@ export default function AdminChats() {
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="assignments" className="mt-0">
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Chat Assignments</h2>
-                
+
                 {assignmentsLoading || developersLoading ? (
                   <div className="flex justify-center items-center p-12">
                     <Loader2 className="h-8 w-8 animate-spin text-green-500" />
@@ -443,7 +431,7 @@ export default function AdminChats() {
                 ) : assignments.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <p className="mb-4">No chats are currently assigned to developers.</p>
-                    <Button 
+                    <Button
                       onClick={() => setActiveTab('chats')}
                       variant="outline"
                     >
@@ -489,7 +477,7 @@ export default function AdminChats() {
                                   onClick={() => {
                                     const chatName = assignment.chatName;
                                     const developerName = assignment.developer?.name || "developer";
-                                    
+
                                     if (window.confirm(`Are you sure you want to unassign ${developerName} from "${chatName}"?`)) {
                                       handleUnassignChat(assignment.chatId);
                                     }
@@ -498,9 +486,9 @@ export default function AdminChats() {
                                 >
                                   Unassign
                                 </Button>
-                                
+
                                 <Button
-                                  variant="ghost" 
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => {
                                     // Find the chat in the chats array
@@ -508,9 +496,7 @@ export default function AdminChats() {
                                     if (chat) {
                                       setSelectedChat(chat);
                                       setActiveTab('chats');
-                                      setTimeout(() => {
-                                        handleOpenAssignDialog();
-                                      }, 100);
+                                      handleOpenAssignDialog();
                                     } else {
                                       toast.error("Chat not found. Please try refreshing the page.");
                                     }

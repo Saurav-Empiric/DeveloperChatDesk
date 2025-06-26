@@ -25,11 +25,11 @@ export interface DeveloperResponse {
   developer?: Developer;
 }
 
-export const developerService = {
+
   /**
    * Get all developers
    */
-  getDevelopers: async (): Promise<DeveloperResponse> => {
+  export const  getDevelopers = async (): Promise<DeveloperResponse> => {
     try {
       const response = await axios.get('/api/developers');
       return { 
@@ -43,12 +43,12 @@ export const developerService = {
       console.error('Error fetching developers:', error);
       return { success: false, error: errorMessage };
     }
-  },
+  }
 
   /**
    * Add a new developer
    */
-  addDeveloper: async (data: DeveloperData): Promise<DeveloperResponse> => {
+  export const addDeveloper = async (data: DeveloperData): Promise<DeveloperResponse> => {
     try {
       const response = await axios.post('/api/developers', data);
       return { 
@@ -63,12 +63,12 @@ export const developerService = {
       console.error('Error adding developer:', error);
       return { success: false, error: errorMessage };
     }
-  },
+  }
 
   /**
    * Delete a developer
    */
-  deleteDeveloper: async (id: string): Promise<DeveloperResponse> => {
+  export const deleteDeveloper = async (id: string): Promise<DeveloperResponse> => {
     try {
       const response = await axios.delete(`/api/developers?id=${id}`);
       return { 
@@ -82,5 +82,4 @@ export const developerService = {
       console.error('Error deleting developer:', error);
       return { success: false, error: errorMessage };
     }
-  },
-}; 
+  }

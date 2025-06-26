@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { developerService, type Developer } from '@/services/developerService';
+import { getDevelopers, type Developer } from '@/services/developerService';
 import { createAssignment, deleteAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
 import { toast } from 'sonner';
 import { Chat } from './index';
@@ -30,7 +30,7 @@ export const AssignChatDialog = ({
   // Fetch developers
   const { data: developerData, isLoading: developersLoading } = useQuery({
     queryKey: ['developers'],
-    queryFn: developerService.getDevelopers,
+    queryFn: getDevelopers,
     enabled: isOpen,
   });
 
