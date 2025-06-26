@@ -56,9 +56,9 @@ const transformChat = (serviceChat: ServiceChat, assignments: any[] = []): Exten
 
   // Extract developer information with unique keys
   const developers = chatAssignments.map(assignment => ({
-    id: assignment.developerId?.toString() || '',
-    name: assignment.developerId?.name || 'Unknown',
-    email: assignment.developer?.email || '',
+    id: assignment.developerId?._id?.toString() || '',
+    name: assignment.developerId?.userId?.name || 'Unknown',
+    email: assignment.developerId?.userId?.email || '',
     assignmentId: assignment._id, // Add unique assignment ID to ensure unique keys
   })).filter(dev => dev.id);
 

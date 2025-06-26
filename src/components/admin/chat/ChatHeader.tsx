@@ -27,7 +27,6 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader = ({ selectedChat, onOpenAssignDialog }: ChatHeaderProps) => {
-  // Multiple developers might be assigned to this chat
   const hasMultipleDevs = selectedChat.assignedCount && selectedChat.assignedCount > 1;
   const developers = selectedChat.developers || [];
   

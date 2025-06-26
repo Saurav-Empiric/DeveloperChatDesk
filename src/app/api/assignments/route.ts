@@ -183,9 +183,9 @@ export async function DELETE(req: NextRequest) {
     const chatId = searchParams.get('chatId');
     const developerId = searchParams.get('developerId');
 
-    if (!assignmentId && (!chatId || !developerId)) {
+    if (!assignmentId && !chatId) {
       return NextResponse.json({
-        error: 'Either assignment ID or both chatId and developerId are required'
+        error: 'Either assignment ID or chatId is required'
       }, { status: 400 });
     }
 
@@ -207,29 +207,49 @@ export async function DELETE(req: NextRequest) {
           name: assignment.chatName
         };
       }
-    } else if (chatId && developerId) {
-      // Find and delete the assignment for this chat and developer
-      assignment = await ChatAssignment.findOneAndDelete({
-        chatId,
-        developerId
-      }).populate('developerId');
+    } else if (chatId) {
+      if (developerId) {
+        // Delete specific assignment for this chat and developer
+        assignment = await ChatAssignment.findOneAndDelete({
+          chatId,
+          developerId
+        }).populate('developerId');
 
-      if (assignment) {
-        chatDetails = {
-          id: assignment.chatId,
-          name: assignment.chatName
-        };
-
-        // Get developer details
-        const developer = await Developer.findById(developerId)
-          .populate('userId');
-
-        if (developer) {
-          developerDetails = {
-            id: developer._id,
-            name: developer.userId?.name || 'Unknown',
-            email: developer.userId?.email || ''
+        if (assignment) {
+          chatDetails = {
+            id: assignment.chatId,
+            name: assignment.chatName
           };
+
+          // Get developer details
+          const developer = await Developer.findById(developerId)
+            .populate('userId');
+
+          if (developer) {
+            developerDetails = {
+              id: developer._id,
+              name: developer.userId?.name || 'Unknown',
+              email: developer.userId?.email || ''
+            };
+          }
+        }
+      } else {
+        // Delete all assignments for this chat
+        const deletedAssignments = await ChatAssignment.find({ chatId })
+          .populate('developerId');
+
+        if (deletedAssignments.length > 0) {
+          // Get chat details from the first assignment
+          chatDetails = {
+            id: deletedAssignments[0].chatId,
+            name: deletedAssignments[0].chatName
+          };
+
+          // Delete all assignments
+          await ChatAssignment.deleteMany({ chatId });
+          
+          // Set a flag to indicate multiple deletions
+          assignment = { _id: 'multiple', chatId, chatName: deletedAssignments[0].chatName };
         }
       }
     }

@@ -138,7 +138,7 @@ export const AssignChatDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-full max-w-md mx-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             {isAssigned ? (
@@ -154,65 +154,65 @@ export const AssignChatDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-green-500" />
             </div>
           ) : (
             <>
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-green-100 text-green-600">
-                      {chat?.name.charAt(0).toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
+                              <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                      <AvatarFallback className="bg-green-100 text-green-600">
+                        {chat?.name.charAt(0).toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-sm sm:text-base break-words">{chat?.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {chat?.isGroup ? 'Group chat' : 'Individual chat'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                              {assignedDevelopers.length > 0 && (
                   <div>
-                    <h3 className="font-medium">{chat?.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {chat?.isGroup ? 'Group chat' : 'Individual chat'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {assignedDevelopers.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium mb-2">Current Assignments</h4>
-                  <div className="space-y-2">
-                    {assignedDevelopers.map(developer => (
-                      <div key={developer?.assignmentId || developer?.id} className="p-3 border rounded-lg bg-green-50 border-green-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-green-600 text-white">
-                                {developer?.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{developer?.name}</p>
-                              <p className="text-xs text-gray-600">{developer?.email}</p>
+                    <h4 className="text-sm font-medium mb-2">Current Assignments</h4>
+                    <div className="space-y-2 max-h-48 sm:max-h-60 overflow-y-auto">
+                      {assignedDevelopers.map(developer => (
+                        <div key={developer?.assignmentId || developer?.id} className="p-2 sm:p-3 border rounded-lg bg-green-50 border-green-100">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                                <AvatarFallback className="bg-green-600 text-white text-xs sm:text-sm">
+                                  {developer?.name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-xs sm:text-sm truncate">{developer?.name}</p>
+                                <p className="text-xs text-gray-600 truncate">{developer?.email}</p>
+                              </div>
                             </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleUnassignDeveloper(developer?.id || '')}
+                              disabled={isSubmitting}
+                              className="flex-shrink-0 h-7 w-7 p-0 sm:h-8 sm:w-8"
+                            >
+                              <X className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                            </Button>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleUnassignDeveloper(developer?.id || '')}
-                            disabled={isSubmitting}
-                          >
-                            <X className="h-4 w-4 text-gray-500" />
-                          </Button>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="space-y-4 mb-4">
-                <div>
-                  <Label htmlFor="developer" className="text-base">
+                              <div>
+                  <Label htmlFor="developer" className="text-sm sm:text-base">
                     {isAssigned ? 'Assign to additional developer' : 'Select Developer'}
                   </Label>
                   <Select
@@ -231,65 +231,69 @@ export const AssignChatDialog = ({
                       ) : (
                         availableDevelopers.map((developer: Developer) => (
                           <SelectItem key={developer._id} value={developer._id}>
-                            {developer.userId.name} ({developer.userId.email})
+                            <span className="text-sm">{developer.userId.name} ({developer.userId.email})</span>
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
             </>
           )}
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={isSubmitting} 
+            className="w-full sm:w-auto"
+          >
+            Close
+          </Button>
+          
           {isAssigned ? (
-            <div className="flex flex-col w-full space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 variant="destructive"
                 onClick={handleUnassignAll}
                 disabled={isSubmitting || isLoading}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto text-sm"
               >
                 {unassignMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 )}
-                Unassign All Developers
+                Remove All
               </Button>
               
               <Button
                 variant="default"
                 onClick={handleAssign}
                 disabled={!selectedDeveloperId || isSubmitting || isLoading || availableDevelopers.length === 0}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto text-sm"
               >
                 {assignMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 ) : (
-                  <UserPlus className="mr-2 h-4 w-4" />
+                  <UserPlus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 )}
-                Assign Additional Developer
+                Assign Developer
               </Button>
             </div>
           ) : (
             <Button
               onClick={handleAssign}
               disabled={!selectedDeveloperId || isSubmitting || isLoading}
-              className="w-full"
+              className="w-full sm:w-auto text-sm"
             >
               {assignMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
               ) : (
-                <UserCheck className="mr-2 h-4 w-4" />
+                <UserCheck className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               )}
               Assign Developer
             </Button>
           )}
-          
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
-            Close
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
