@@ -1,9 +1,7 @@
 'use client';
 
 import Navbar from '@/components/Navbar';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getDevelopers } from '@/services/developerService';
 import {
   getAssignments,
   getChats,
@@ -16,7 +14,6 @@ import {
   type Message as ServiceMessage
 } from '@/services/whatsappService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +22,7 @@ import { toast } from 'sonner';
 // Import chat components
 import {
   AssignChatDialog,
+  AssignmentsView,
   ChatHeader,
   ChatSidebar,
   LoadingSpinner,
@@ -36,20 +34,49 @@ import {
   type Chat,
   type Message
 } from '@/components/admin/chat';
+import { QUERY_KEYS } from '@/lib/constants';
+
+// Extend the Chat type to include multiple developers
+type ExtendedChat = Chat & {
+  developers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    assignmentId: string;
+  }>;
+  assignedCount?: number;
+};
 
 // Helper function to transform service chat to UI chat
-const transformChat = (serviceChat: ServiceChat): Chat => ({
-  id: serviceChat.id,
-  name: serviceChat.name,
-  lastMessage: {
-    text: serviceChat.lastMessage?.body || '',
-    timestamp: serviceChat.lastMessage?.timestamp || 0,
-    fromMe: false // This would need to be determined based on session info
-  },
-  unreadCount: 0, // This would come from the API if available
-  isGroup: serviceChat.name.includes('@g.us') || serviceChat.name.includes('group'),
-  isAssigned: false // This would be determined by checking assignments
-});
+const transformChat = (serviceChat: ServiceChat, assignments: any[] = []): ExtendedChat => {
+  // Find all assignments for this chat
+  const chatAssignments = assignments.filter(
+    assignment => assignment.chatId === serviceChat.id.user
+  );
+
+  // Extract developer information with unique keys
+  const developers = chatAssignments.map(assignment => ({
+    id: assignment.developerId?.toString() || '',
+    name: assignment.developerId?.name || 'Unknown',
+    email: assignment.developer?.email || '',
+    assignmentId: assignment._id, // Add unique assignment ID to ensure unique keys
+  })).filter(dev => dev.id);
+
+  return {
+    id: serviceChat.id,
+    name: serviceChat.name,
+    lastMessage: {
+      text: serviceChat.lastMessage?.body || '',
+      timestamp: serviceChat.lastMessage?.timestamp || 0,
+      fromMe: false // This would need to be determined based on session info
+    },
+    unreadCount: 0, // This would come from the API if available
+    isGroup: serviceChat.name.includes('@g.us') || serviceChat.name.includes('group'),
+    isAssigned: chatAssignments.length > 0,
+    assignedCount: chatAssignments.length,
+    developers: developers,
+  };
+};
 
 // Helper function to transform service message to UI message
 const transformMessage = (serviceMessage: ServiceMessage): Message => ({
@@ -64,20 +91,6 @@ const transformMessage = (serviceMessage: ServiceMessage): Message => ({
   isFromMe: serviceMessage.from === 'me'
 });
 
-// Define interfaces for type safety
-interface Developer {
-  _id: string;
-  userId: {
-    name: string;
-    email: string;
-  };
-}
-
-interface DevelopersResponse {
-  success: boolean;
-  developers: Developer[];
-}
-
 export default function AdminChats() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -90,13 +103,6 @@ export default function AdminChats() {
 
   // State for the assign chat dialog
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-
-  // Query Keys
-  const QUERY_KEYS = {
-    SESSIONS: ['whatsapp', 'sessions'],
-    CHATS: (sessionId?: string) => ['whatsapp', 'chats', sessionId],
-    MESSAGES: (sessionId: string, chatId: string) => ['whatsapp', 'messages', sessionId, chatId],
-  } as const;
 
   // React Query for WhatsApp sessions
   const {
@@ -138,7 +144,7 @@ export default function AdminChats() {
     refetchOnWindowFocus: false,
   });
 
-  // Get messages for the selected chat
+  // React Query for Get messages for the selected chat
   const {
     data: messagesData,
     error: messagesError,
@@ -190,27 +196,12 @@ export default function AdminChats() {
       }
       return response.assignments || [];
     },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
-  });
-
-  // React Query for developers (needed for assignments view)
-  const {
-    data: developersData,
-    isLoading: developersLoading,
-  } = useQuery({
-    queryKey: ['developers'],
-    queryFn: async () => {
-      const response = await getDevelopers();
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch developers');
-      }
-      return response;
-    },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin' && activeTab === 'assignments',
+    enabled: status === 'authenticated' && session?.user?.role === 'admin',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: false,
   });
 
   // Transform data
-  const chats = useMemo(() => rawChats.map(transformChat), [rawChats]);
   const messages = useMemo(() => {
     if (!messagesData?.messages) return [];
     return messagesData.messages.map(transformMessage);
@@ -222,20 +213,6 @@ export default function AdminChats() {
       setSelectedSession(sessions[0].id);
     }
   }, [sessions, selectedSession]);
-
-  // Utility function to format time
-  const formatTime = useCallback((timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    if (messageDate.getTime() === today.getTime()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  }, []);
 
   // Handle chat selection
   const handleChatSelect = useCallback((chat: Chat) => {
@@ -294,47 +271,58 @@ export default function AdminChats() {
     }
   };
 
-  // Assignment management
-  const handleUnassignChat = async (chatId: string) => {
+  // Assignment management - simplified
+  const handleUnassignDeveloper = async (chatId: string, developerId: string, developerName: string) => {
     try {
-      const response = await unassignChat(chatId);
+      const response = await unassignChat(chatId, developerId);
       if (response.success) {
-        toast.success('Chat unassigned successfully');
-        refetchChats();
+        toast.success(`${developerName} unassigned successfully`);
         refetchAssignments();
+        refetchChats();
       } else {
-        toast.error(response.error || 'Failed to unassign chat');
+        toast.error(response.error || 'Failed to unassign developer');
       }
     } catch (error) {
-      console.error('Error unassigning chat:', error);
-      toast.error('An error occurred while unassigning the chat');
+      console.error('Error unassigning developer:', error);
+      toast.error('An error occurred while unassigning the developer');
     }
   };
 
-  // Process assignments data for display
-  const assignments = useMemo(() => {
-    if (!assignmentsData) return [];
+  const handleViewChatFromAssignment = (chatId: string) => {
+    const chat = enhancedChats.find(c => c.id.user === chatId);
+    if (chat) {
+      setSelectedChat(chat);
+      setActiveTab('chats');
+    } else {
+      toast.error("Chat not found. Please try refreshing the page.");
+    }
+  };
 
-    // Map developers to a lookup object
-    // Make sure developers is an array before using reduce
-    const developersResponse = developersData as DevelopersResponse | undefined;
-    const developers: Developer[] = developersResponse?.developers || [];
+  const handleManageAssignmentFromView = (chatId: string) => {
+    const chat = enhancedChats.find(c => c.id.user === chatId);
+    if (chat) {
+      setSelectedChat(chat);
+      handleOpenAssignDialog();
+    } else {
+      toast.error("Chat not found. Please try refreshing the page.");
+    }
+  };
 
-    const developerLookup = developers.reduce((acc: Record<string, Developer>, dev: Developer) => {
-      acc[dev._id] = dev;
-      return acc;
-    }, {});
+  // Use assignments data directly since API now populates developer info
+  const assignments = assignmentsData || [];
 
-    return assignmentsData.map((assignment: any) => ({
-      ...assignment,
-      developer: assignment.developerId && developerLookup[assignment.developerId.toString()]
-        ? {
-          name: developerLookup[assignment.developerId.toString()].userId?.name || 'Unknown',
-          email: developerLookup[assignment.developerId.toString()].userId?.email || '',
-        }
-        : null
-    }));
-  }, [assignmentsData, developersData]);
+  // Process assignments for chat display
+  const enhancedChats = useMemo(() => {
+    if (rawChats.length === 0) return [];
+    // Convert each chat with its assignments
+    return rawChats.map((chat: ServiceChat) => transformChat(chat, assignments));
+  }, [rawChats, assignments]);
+
+  // Handle direct assign from chat list
+  const handleQuickAssign = useCallback((chat: Chat) => {
+    setSelectedChat(chat);
+    setIsAssignDialogOpen(true);
+  }, []);
 
   // Authentication and role checks
   if (status === 'loading' || sessionsLoading) {
@@ -382,13 +370,13 @@ export default function AdminChats() {
               <div className="flex bg-white rounded-lg shadow-lg h-[calc(100vh-280px)]">
                 {/* Chat List Sidebar */}
                 <ChatSidebar
-                  chats={chats}
+                  chats={enhancedChats as any[]}
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
                   selectedChat={selectedChat}
                   onChatSelect={handleChatSelect}
-                  formatTime={formatTime}
-                  isLoading={chatsLoading}
+                  onAssignChat={handleQuickAssign}
+                  isLoading={chatsLoading || assignmentsLoading}
                 />
 
                 {/* Chat Messages Area */}
@@ -403,7 +391,6 @@ export default function AdminChats() {
                         messages={messages}
                         isLoading={messagesLoading}
                         isError={!!messagesError}
-                        formatTime={formatTime}
                       />
                       <MessageInput
                         message={newMessage}
@@ -421,98 +408,14 @@ export default function AdminChats() {
             </TabsContent>
 
             <TabsContent value="assignments" className="mt-0">
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold mb-4">Chat Assignments</h2>
-
-                {assignmentsLoading || developersLoading ? (
-                  <div className="flex justify-center items-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                  </div>
-                ) : assignments.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <p className="mb-4">No chats are currently assigned to developers.</p>
-                    <Button
-                      onClick={() => setActiveTab('chats')}
-                      variant="outline"
-                    >
-                      Go to Chats to Assign Conversations
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="overflow-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 text-xs uppercase">
-                        <tr>
-                          <th className="px-6 py-3 text-left">Chat</th>
-                          <th className="px-6 py-3 text-left">Assigned Developer</th>
-                          <th className="px-6 py-3 text-left">Assigned Date</th>
-                          <th className="px-6 py-3 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {assignments.map((assignment: any) => (
-                          <tr key={assignment._id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div className="font-medium">{assignment.chatName}</div>
-                              <div className="text-xs text-gray-500">{assignment.chatId}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              {assignment.developer ? (
-                                <div>
-                                  <div className="font-medium">{assignment.developer.name}</div>
-                                  <div className="text-xs text-gray-500">{assignment.developer.email}</div>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">Unknown Developer</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              {new Date(assignment.assignedAt).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const chatName = assignment.chatName;
-                                    const developerName = assignment.developer?.name || "developer";
-
-                                    if (window.confirm(`Are you sure you want to unassign ${developerName} from "${chatName}"?`)) {
-                                      handleUnassignChat(assignment.chatId);
-                                    }
-                                  }}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  Unassign
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    // Find the chat in the chats array
-                                    const chat = chats.find(c => c.id.user === assignment.chatId);
-                                    if (chat) {
-                                      setSelectedChat(chat);
-                                      setActiveTab('chats');
-                                      handleOpenAssignDialog();
-                                    } else {
-                                      toast.error("Chat not found. Please try refreshing the page.");
-                                    }
-                                  }}
-                                >
-                                  Manage
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <AssignmentsView
+                assignments={assignments}
+                isLoading={assignmentsLoading}
+                onGoToChats={() => setActiveTab('chats')}
+                onViewChat={handleViewChatFromAssignment}
+                onManageAssignment={handleManageAssignmentFromView}
+                onUnassignDeveloper={handleUnassignDeveloper}
+              />
             </TabsContent>
           </Tabs>
         )}

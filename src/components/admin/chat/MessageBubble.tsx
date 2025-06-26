@@ -1,3 +1,5 @@
+import { formatTime } from "@/lib/utils";
+
 // Extended Message type for UI purposes
 interface Message {
   id: string;
@@ -16,12 +18,10 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
-  formatTime: (timestamp: number) => string;
 }
 
 export const MessageBubble = ({ 
   message, 
-  formatTime 
 }: MessageBubbleProps) => (
   <div className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}>
     <div

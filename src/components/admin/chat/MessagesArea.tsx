@@ -6,14 +6,12 @@ interface MessagesAreaProps {
   messages: Message[];
   isLoading: boolean;
   isError: boolean;
-  formatTime: (timestamp: number) => string;
 }
 
 export const MessagesArea = ({
   messages,
   isLoading,
   isError,
-  formatTime
 }: MessagesAreaProps) => (
   <ScrollArea className="flex-1 p-4 bg-gray-50">
     {isLoading ? (
@@ -30,7 +28,6 @@ export const MessagesArea = ({
           <MessageBubble
             key={message.id}
             message={message}
-            formatTime={formatTime}
           />
         ))}
       </div>

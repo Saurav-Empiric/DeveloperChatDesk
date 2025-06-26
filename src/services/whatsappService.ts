@@ -56,7 +56,6 @@ export interface Assignment {
   chatId: string;
   chatName: string;
   assignedAt: string;
-  isActive: boolean;
 }
 
 export interface AssignmentData {
@@ -191,7 +190,8 @@ export const getAssignments = async (): Promise<AssignmentResponse> => {
     const response = await axios.get('/api/assignments');
     return {
       success: true,
-      assignments: response.data.assignments
+      assignments: response.data.assignments,
+      
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;
@@ -211,7 +211,7 @@ export const getAssignmentByChatId = async (chatId: string): Promise<AssignmentR
     return {
       success: true,
       isAssigned: response.data.isAssigned,
-      assignment: response.data.assignment
+      assignments: response.data.assignments
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;
@@ -265,9 +265,13 @@ export const deleteAssignment = async (assignmentId: string): Promise<Assignment
 /**
  * Delete a chat assignment by chat ID
  */
-export const unassignChat = async (chatId: string): Promise<AssignmentResponse> => {
+export const unassignChat = async (chatId: string, developerId?: string): Promise<AssignmentResponse> => {
   try {
-    const response = await axios.delete(`/api/assignments?chatId=${chatId}`);
+    const url = developerId 
+      ? `/api/assignments?chatId=${chatId}&developerId=${developerId}`
+      : `/api/assignments?chatId=${chatId}`;
+      
+    const response = await axios.delete(url);
     return {
       success: true,
       message: response.data.message || 'Chat unassigned successfully',

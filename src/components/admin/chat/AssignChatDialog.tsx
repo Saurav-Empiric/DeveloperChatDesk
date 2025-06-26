@@ -8,7 +8,7 @@ import { getDevelopers, type Developer } from '@/services/developerService';
 import { createAssignment, deleteAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
 import { toast } from 'sonner';
 import { Chat } from './index';
-import { Loader2, UserCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, UserCheck, AlertCircle, CheckCircle, UserPlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface AssignChatDialogProps {
@@ -42,7 +42,7 @@ export const AssignChatDialog = ({
   } = useQuery({
     queryKey: ['assignment', chat?.id.user],
     queryFn: async () => {
-      if (!chat?.id.user) return { success: false, isAssigned: false, assignment: null };
+      if (!chat?.id.user) return { success: false, isAssigned: false, assignments: [] };
       return await getAssignmentByChatId(chat.id.user);
     },
     enabled: isOpen && !!chat,
@@ -53,11 +53,12 @@ export const AssignChatDialog = ({
     mutationFn: createAssignment,
     onSuccess: () => {
       toast.success('Chat assigned successfully');
+      setSelectedDeveloperId('');
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user] });
+      refetchAssignment();
       onAssignmentComplete();
-      onClose();
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to assign chat');
@@ -66,14 +67,15 @@ export const AssignChatDialog = ({
 
   // Remove assignment mutation
   const unassignMutation = useMutation({
-    mutationFn: (chatId: string) => unassignChat(chatId),
+    mutationFn: ({ chatId, developerId }: { chatId: string, developerId?: string }) => 
+      unassignChat(chatId, developerId),
     onSuccess: () => {
       toast.success('Chat assignment removed');
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user] });
+      refetchAssignment();
       onAssignmentComplete();
-      onClose();
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to remove assignment');
@@ -100,40 +102,55 @@ export const AssignChatDialog = ({
     });
   };
 
-  const handleUnassign = async () => {
+  const handleUnassignDeveloper = async (developerId: string) => {
     if (!chat || !chat.id.user) return;
-    unassignMutation.mutate(chat.id.user);
+    unassignMutation.mutate({ chatId: chat.id.user, developerId });
+  };
+
+  const handleUnassignAll = async () => {
+    if (!chat || !chat.id.user) return;
+    unassignMutation.mutate({ chatId: chat.id.user });
   };
 
   const developers = developerData?.developers || [];
   const isSubmitting = assignMutation.isPending || unassignMutation.isPending;
-  const currentAssignment = assignmentData?.assignment;
-  const isAssigned = assignmentData?.isAssigned || false;
+  const currentAssignments = assignmentData?.assignments || [];
+  const isAssigned = assignmentData?.isAssigned || currentAssignments.length > 0;
   const isLoading = developersLoading || assignmentLoading;
 
-  // Find current developer details
-  const currentDeveloper = currentAssignment && developers.length > 0
-    ? developers.find((dev: Developer) => dev._id === (currentAssignment as any).developerId?.toString())
-    : null;
+  // Find assigned developers
+  const assignedDevelopers = currentAssignments.length > 0 && developers.length > 0
+    ? currentAssignments.map(assignment => {
+        const dev = developers.find((d: Developer) => d._id === (assignment.developerId?.toString()));
+        return dev ? {
+          id: dev._id,
+          name: dev.userId?.name || 'Unknown',
+          email: dev.userId?.email || '',
+          assignmentId: assignment._id
+        } : null;
+      }).filter(Boolean)
+    : [];
 
-  // Determine if chat is assigned
-  const chatIsAssigned = Boolean(isAssigned || chat?.isAssigned || currentAssignment);
+  // Filter developers that are already assigned
+  const availableDevelopers = developers.filter(dev => 
+    !assignedDevelopers.some(assigned => assigned?.id === dev._id)
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
-            {chatIsAssigned ? (
-              <><UserCheck className="h-5 w-5 text-green-500" /> Manage Chat Assignment</>
+            {isAssigned ? (
+              <><UserCheck className="h-5 w-5 text-green-500" /> Manage Chat Assignments</>
             ) : (
-              <>Assign Chat to Developer</>
+              <>Assign Chat to Developers</>
             )}
           </DialogTitle>
           <DialogDescription>
-            {chatIsAssigned 
-              ? "This chat is currently assigned. You can reassign it to a different developer or remove the assignment." 
-              : "Select a developer to handle this chat conversation."}
+            {isAssigned 
+              ? "Manage developer assignments for this chat. You can assign additional developers or remove existing assignments." 
+              : "Select developers to handle this chat conversation."}
           </DialogDescription>
         </DialogHeader>
 
@@ -160,21 +177,35 @@ export const AssignChatDialog = ({
                 </div>
               </div>
 
-              {chatIsAssigned && currentDeveloper && (
+              {assignedDevelopers.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-medium mb-2">Current Assignment</h4>
-                  <div className="p-4 border rounded-lg bg-green-50 border-green-100">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-green-600 text-white">
-                          {currentDeveloper.userId.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{currentDeveloper.userId.name}</p>
-                        <p className="text-xs text-gray-600">{currentDeveloper.userId.email}</p>
+                  <h4 className="text-sm font-medium mb-2">Current Assignments</h4>
+                  <div className="space-y-2">
+                    {assignedDevelopers.map(developer => (
+                      <div key={developer?.assignmentId || developer?.id} className="p-3 border rounded-lg bg-green-50 border-green-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-green-600 text-white">
+                                {developer?.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{developer?.name}</p>
+                              <p className="text-xs text-gray-600">{developer?.email}</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleUnassignDeveloper(developer?.id || '')}
+                            disabled={isSubmitting}
+                          >
+                            <X className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -182,23 +213,23 @@ export const AssignChatDialog = ({
               <div className="space-y-4 mb-4">
                 <div>
                   <Label htmlFor="developer" className="text-base">
-                    {chatIsAssigned ? 'Reassign to a different developer' : 'Select Developer'}
+                    {isAssigned ? 'Assign to additional developer' : 'Select Developer'}
                   </Label>
                   <Select
                     value={selectedDeveloperId}
                     onValueChange={setSelectedDeveloperId}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || availableDevelopers.length === 0}
                   >
                     <SelectTrigger id="developer" className="mt-2">
                       <SelectValue placeholder="Choose a developer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {developers.length === 0 ? (
+                      {availableDevelopers.length === 0 ? (
                         <SelectItem value="none" disabled>
-                          No developers available
+                          {developers.length === 0 ? 'No developers available' : 'All developers assigned'}
                         </SelectItem>
                       ) : (
-                        developers.map((developer: Developer) => (
+                        availableDevelopers.map((developer: Developer) => (
                           <SelectItem key={developer._id} value={developer._id}>
                             {developer.userId.name} ({developer.userId.email})
                           </SelectItem>
@@ -208,78 +239,57 @@ export const AssignChatDialog = ({
                   </Select>
                 </div>
               </div>
-
-              {chatIsAssigned && (
-                <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-md mb-4">
-                  <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                    <p className="text-sm text-yellow-800">
-                      Reassigning this chat will remove the current assignment. The previously assigned developer will no longer have access to this chat.
-                    </p>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          {chatIsAssigned && (
+          {isAssigned ? (
             <div className="flex flex-col w-full space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
               <Button
                 variant="destructive"
-                onClick={handleUnassign}
+                onClick={handleUnassignAll}
                 disabled={isSubmitting || isLoading}
                 className="w-full sm:w-auto"
               >
                 {unassignMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Unassign This Chat
+                Unassign All Developers
               </Button>
               
-              {currentDeveloper && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (window.confirm(`Are you sure you want to unassign ${currentDeveloper.userId.name} from this chat?`)) {
-                      handleUnassign();
-                    }
-                  }}
-                  disabled={isSubmitting || isLoading}
-                  className="w-full sm:w-auto text-red-500 border-red-200 hover:bg-red-50"
-                >
-                  {unassignMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Unassign {currentDeveloper.userId.name.split(' ')[0]}
-                </Button>
-              )}
+              <Button
+                variant="default"
+                onClick={handleAssign}
+                disabled={!selectedDeveloperId || isSubmitting || isLoading || availableDevelopers.length === 0}
+                className="w-full sm:w-auto"
+              >
+                {assignMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                Assign Additional Developer
+              </Button>
             </div>
-          )}
-          
-          <div className="flex flex-col w-full space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
+          ) : (
             <Button
               onClick={handleAssign}
               disabled={!selectedDeveloperId || isSubmitting || isLoading}
-              className="w-full sm:w-auto"
+              className="w-full"
             >
               {assignMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <CheckCircle className="mr-2 h-4 w-4" />
+                <UserCheck className="mr-2 h-4 w-4" />
               )}
-              {chatIsAssigned ? 'Reassign Chat' : 'Assign Chat'}
+              Assign Developer
             </Button>
-          </div>
+          )}
+          
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

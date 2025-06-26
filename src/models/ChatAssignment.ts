@@ -5,7 +5,6 @@ export interface IChatAssignment extends Document {
   chatId: string;
   chatName: string;
   assignedAt: Date;
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,17 +28,13 @@ const ChatAssignmentSchema = new Schema<IChatAssignment>(
       type: Date,
       default: Date.now,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Create a compound index to ensure a chat can only be assigned to one developer
-ChatAssignmentSchema.index({ chatId: 1, isActive: 1 }, { unique: true, partialFilterExpression: { isActive: true } });
+// Create a compound index for efficient querying by chatId and developerId
+ChatAssignmentSchema.index({ chatId: 1, developerId: 1 });
 
 export default mongoose.models.ChatAssignment || mongoose.model<IChatAssignment>('ChatAssignment', ChatAssignmentSchema); 

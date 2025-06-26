@@ -7,6 +7,7 @@ import { MessageInput } from './MessageInput';
 import { MessagesArea } from './MessagesArea';
 import { SessionSelector } from './SessionSelector';
 import { AssignChatDialog } from './AssignChatDialog';
+import { AssignmentsView } from './AssignmentsView';
 
 // Chat states
 import { NoSessionsState } from './ChatStates';
@@ -31,6 +32,13 @@ export interface Chat {
   isGroup: boolean;
   isAssigned?: boolean;
   developerId?: string;
+  developers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    assignmentId?: string;
+  }>;
+  assignedCount?: number;
 }
 
 export interface Message {
@@ -54,6 +62,7 @@ export {
   MessagesArea,
   SessionSelector,
   AssignChatDialog,
+  AssignmentsView,
   
   // States
   NoSessionsState,
