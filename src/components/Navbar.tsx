@@ -19,7 +19,12 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
-    router.push('/login');
+    // Redirect based on user role
+    if (session?.user?.role === 'developer') {
+      router.push('/developer/login');
+    } else {
+      router.push('/login');
+    }
   };
 
   const getInitials = (name: string) => {

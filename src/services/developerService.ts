@@ -58,3 +58,26 @@ import axios, { AxiosError } from 'axios';
       return { success: false, error: errorMessage };
     }
   }
+
+  /**
+   * Get developer's assigned chats with WhatsApp details
+   */
+  export const getDeveloperAssignedChats = async (): Promise<{
+    success: boolean;
+    chats?: any[];
+    error?: string;
+  }> => {
+    try {
+      const response = await axios.get('/api/developer/chats');
+      return {
+        success: true,
+        chats: response.data.chats
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<any>;
+      const errorMessage = axiosError.response?.data?.error ||
+        'Failed to fetch assigned chats';
+      console.error('Error fetching developer assigned chats:', error);
+      return { success: false, error: errorMessage };
+    }
+  }
