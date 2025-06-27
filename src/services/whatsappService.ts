@@ -230,7 +230,7 @@ export const createAssignment = async (data: AssignmentData): Promise<Assignment
     const response = await axios.post('/api/assignments', data);
     return {
       success: true,
-      message: response.data.message || 'Chat assigned successfully',
+      message: response.data.message,
       assignment: response.data.assignment
     };
   } catch (error) {

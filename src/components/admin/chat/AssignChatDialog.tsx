@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDevelopers, type Developer } from '@/services/developerService';
-import { createAssignment, deleteAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
+import { createAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
 import { toast } from 'sonner';
 import { Chat } from './index';
 import { Loader2, UserCheck, AlertCircle, CheckCircle, UserPlus, X } from 'lucide-react';
@@ -51,8 +51,8 @@ export const AssignChatDialog = ({
   // Create assignment mutation
   const assignMutation = useMutation({
     mutationFn: createAssignment,
-    onSuccess: () => {
-      toast.success('Chat assigned successfully');
+    onSuccess: (data) => {
+      toast.success(data.message ?? 'Chat assigned successfully');
       setSelectedDeveloperId('');
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
@@ -69,8 +69,8 @@ export const AssignChatDialog = ({
   const unassignMutation = useMutation({
     mutationFn: ({ chatId, developerId }: { chatId: string, developerId?: string }) => 
       unassignChat(chatId, developerId),
-    onSuccess: () => {
-      toast.success('Chat assignment removed');
+    onSuccess: (data) => {
+      toast.success(data.message ?? 'Chat assignment removed');
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user] });
