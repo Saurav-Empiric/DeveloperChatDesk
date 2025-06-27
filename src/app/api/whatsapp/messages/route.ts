@@ -67,15 +67,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
       }
 
-      // Check if this chat is assigned to the developer
+      // Check if this chat is assigned to the developer in this session
       const assignment = await ChatAssignment.findOne({
         developerId: developer._id,
         chatId,
-        isActive: true,
+        sessionId,
       });
 
       if (!assignment) {
-        return NextResponse.json({ error: 'Chat not assigned to you' }, { status: 403 });
+        return NextResponse.json({ error: 'Chat not assigned to you in this session' }, { status: 403 });
       }
     } else {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -156,15 +156,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
       }
 
-      // Check if this chat is assigned to the developer
+      // Check if this chat is assigned to the developer in this session
       const assignment = await ChatAssignment.findOne({
         developerId: developer._id,
         chatId,
-        isActive: true,
+        sessionId,
       });
 
       if (!assignment) {
-        return NextResponse.json({ error: 'Chat not assigned to you' }, { status: 403 });
+        return NextResponse.json({ error: 'Chat not assigned to you in this session' }, { status: 403 });
       }
     } else {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

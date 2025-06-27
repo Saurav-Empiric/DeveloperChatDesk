@@ -96,7 +96,7 @@ export default function DeveloperChatPage() {
       sendMessageMutation.mutate({
         sessionId: 'default', // Using default session for developer
         chatId,
-        message: newMessage
+        text: newMessage
       });
     } catch (error) {
       console.error('Error sending message:', error);

@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { developerId, chatId, chatName } = await req.json();
+    const { developerId, chatId, chatName, sessionId } = await req.json();
 
-    if (!developerId || !chatId || !chatName) {
+    if (!developerId || !chatId || !chatName || !sessionId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -36,16 +36,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
     }
 
-    // Check if this specific assignment already exists
+    // Check if this specific assignment already exists for this session
     const existingAssignment = await ChatAssignment.findOne({
       chatId,
       developerId,
+      sessionId,
     });
 
     if (existingAssignment) {
       return NextResponse.json({
         success: true,
-        message: 'Chat is already assigned to this developer',
+        message: 'Chat is already assigned to this developer in this session',
         assignment: existingAssignment
       });
     }
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       developerId,
       chatId,
       chatName,
+      sessionId,
       assignedAt: new Date(),
     });
 
@@ -82,15 +84,21 @@ export async function GET(req: NextRequest) {
     // Connect to the database
     await connectToDatabase();
 
-    // Get the chatId from query parameters if it exists
+    // Get the chatId and sessionId from query parameters if they exist
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
     const developerId = searchParams.get('developerId');
+    const sessionId = searchParams.get('sessionId');
 
     if (session.user.role === 'admin') {
       if (chatId) {
-        // If chatId is provided, get all assignments for that specific chat
-        const assignments = await ChatAssignment.find({ chatId })
+        // If chatId is provided, get all assignments for that specific chat and session
+        const query: any = { chatId };
+        if (sessionId) {
+          query.sessionId = sessionId;
+        }
+        
+        const assignments = await ChatAssignment.find(query)
           .populate('developerId');
 
         return NextResponse.json({
@@ -101,15 +109,25 @@ export async function GET(req: NextRequest) {
       }
 
       if (developerId) {
-        // If developerId is provided, get all assignments for that developer
-        const assignments = await ChatAssignment.find({ developerId })
+        // If developerId is provided, get all assignments for that developer and session
+        const query: any = { developerId };
+        if (sessionId) {
+          query.sessionId = sessionId;
+        }
+        
+        const assignments = await ChatAssignment.find(query)
           .sort({ assignedAt: -1 });
 
         return NextResponse.json({ success: true, assignments });
       }
 
-      // Admins can see all assignments
-      const assignments = await ChatAssignment.find()
+      // Admins can see assignments filtered by session if provided
+      const query: any = {};
+      if (sessionId) {
+        query.sessionId = sessionId;
+      }
+      
+      const assignments = await ChatAssignment.find(query)
         .populate({
           path: 'developerId',
           select: 'userId',
@@ -131,26 +149,36 @@ export async function GET(req: NextRequest) {
       }
 
       if (chatId) {
-        // If chatId is provided, check if this specific chat is assigned to the developer
-        const assignment = await ChatAssignment.findOne({
+        // If chatId is provided, check if this specific chat is assigned to the developer in the session
+        const query: any = {
           developerId: developer._id,
           chatId
-        });
+        };
+        if (sessionId) {
+          query.sessionId = sessionId;
+        }
+        
+        const assignment = await ChatAssignment.findOne(query);
 
         if (!assignment) {
           return NextResponse.json({
             success: false,
-            error: 'Chat not assigned to you'
+            error: 'Chat not assigned to you in this session'
           }, { status: 403 });
         }
 
         return NextResponse.json({ success: true, assignment });
       }
 
-      // Get all assignments for this developer
-      const assignments = await ChatAssignment.find({
+      // Get all assignments for this developer, filtered by session if provided
+      const query: any = {
         developerId: developer._id
-      }).sort({ assignedAt: -1 });
+      };
+      if (sessionId) {
+        query.sessionId = sessionId;
+      }
+      
+      const assignments = await ChatAssignment.find(query).sort({ assignedAt: -1 });
 
       return NextResponse.json({ success: true, assignments });
     } else {
@@ -182,6 +210,7 @@ export async function DELETE(req: NextRequest) {
     const assignmentId = searchParams.get('id');
     const chatId = searchParams.get('chatId');
     const developerId = searchParams.get('developerId');
+    const sessionId = searchParams.get('sessionId');
 
     if (!assignmentId && !chatId) {
       return NextResponse.json({
@@ -210,10 +239,15 @@ export async function DELETE(req: NextRequest) {
     } else if (chatId) {
       if (developerId) {
         // Delete specific assignment for this chat and developer
-        assignment = await ChatAssignment.findOneAndDelete({
+        const query: any = {
           chatId,
           developerId
-        }).populate('developerId');
+        };
+        if (sessionId) {
+          query.sessionId = sessionId;
+        }
+        
+        assignment = await ChatAssignment.findOneAndDelete(query).populate('developerId');
 
         if (assignment) {
           chatDetails = {
@@ -235,7 +269,12 @@ export async function DELETE(req: NextRequest) {
         }
       } else {
         // Delete all assignments for this chat
-        const deletedAssignments = await ChatAssignment.find({ chatId })
+        const query: any = { chatId };
+        if (sessionId) {
+          query.sessionId = sessionId;
+        }
+        
+        const deletedAssignments = await ChatAssignment.find(query)
           .populate('developerId');
 
         if (deletedAssignments.length > 0) {
@@ -246,7 +285,7 @@ export async function DELETE(req: NextRequest) {
           };
 
           // Delete all assignments
-          await ChatAssignment.deleteMany({ chatId });
+          await ChatAssignment.deleteMany(query);
           
           // Set a flag to indicate multiple deletions
           assignment = { _id: 'multiple', chatId, chatName: deletedAssignments[0].chatName };

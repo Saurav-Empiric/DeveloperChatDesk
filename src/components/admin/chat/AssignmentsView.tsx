@@ -143,6 +143,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 chatMap.set(chatId, {
                     chatId,
                     chatName: assignment.chatName,
+                    sessionId: assignment.sessionId || '',
                     developers: [],
                 });
             }

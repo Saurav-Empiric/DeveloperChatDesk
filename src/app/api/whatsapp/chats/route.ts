@@ -58,9 +58,10 @@ export async function GET(req: NextRequest) {
       // Get all chats from WAHA
       const response = await wahaApi.getChats(sessionId);
 
-      // Get all chat assignments for this session
-      const assignments = await ChatAssignment.find({ isActive: true })
-        .populate('developerId');
+      // Get all chat assignments for this specific session
+      const assignments = await ChatAssignment.find({ 
+        sessionId: sessionId 
+      }).populate('developerId');
 
       // Create a map of chat IDs to assignments with developer details
       const chatAssignments = assignments.reduce((map, assignment) => {
@@ -95,10 +96,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Developer not found' }, { status: 404 });
       }
 
-      // Get assignments for this developer
+      // Get assignments for this developer in the specific session
       const assignments = await ChatAssignment.find({
         developerId: developer._id,
-        isActive: true,
+        sessionId: sessionId,
       });
 
       // Get assigned chat IDs

@@ -4,6 +4,7 @@ export interface IChatAssignment extends Document {
   developerId: mongoose.Types.ObjectId;
   chatId: string;
   chatName: string;
+  sessionId: string;
   assignedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +25,10 @@ const ChatAssignmentSchema = new Schema<IChatAssignment>(
       type: String,
       required: [true, 'Please provide a chat name'],
     },
+    sessionId: {
+      type: String,
+      required: [true, 'Please provide a session ID'],
+    },
     assignedAt: {
       type: Date,
       default: Date.now,
@@ -34,7 +39,9 @@ const ChatAssignmentSchema = new Schema<IChatAssignment>(
   }
 );
 
-// Create a compound index for efficient querying by chatId and developerId
+// Create compound indexes for efficient querying
 ChatAssignmentSchema.index({ chatId: 1, developerId: 1 });
+ChatAssignmentSchema.index({ sessionId: 1, developerId: 1 });
+ChatAssignmentSchema.index({ sessionId: 1, chatId: 1 });
 
 export default mongoose.models.ChatAssignment || mongoose.model<IChatAssignment>('ChatAssignment', ChatAssignmentSchema); 

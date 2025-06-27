@@ -188,15 +188,16 @@ export default function AdminChats() {
     isLoading: assignmentsLoading,
     refetch: refetchAssignments
   } = useQuery({
-    queryKey: ['assignments'],
+    queryKey: ['assignments', selectedSession],
     queryFn: async () => {
-      const response = await getAssignments();
+      if (!selectedSession) return [];
+      const response = await getAssignments(selectedSession);
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch assignments');
       }
       return response.assignments || [];
     },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin',
+    enabled: status === 'authenticated' && session?.user?.role === 'admin' && !!selectedSession,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false,
   });
@@ -274,7 +275,7 @@ export default function AdminChats() {
   // Assignment management - simplified
   const handleUnassignDeveloper = async (chatId: string, developerId: string, developerName: string) => {
     try {
-      const response = await unassignChat(chatId, developerId);
+      const response = await unassignChat(chatId, developerId, selectedSession);
       if (response.success) {
         toast.success(`${developerName} unassigned successfully`);
         refetchAssignments();
@@ -426,6 +427,7 @@ export default function AdminChats() {
         isOpen={isAssignDialogOpen}
         onClose={handleCloseAssignDialog}
         chat={selectedChat}
+        sessionId={selectedSession}
         onAssignmentComplete={handleAssignmentComplete}
       />
     </div>

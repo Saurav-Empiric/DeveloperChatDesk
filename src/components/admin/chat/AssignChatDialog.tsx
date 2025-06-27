@@ -15,6 +15,7 @@ interface AssignChatDialogProps {
   isOpen: boolean;
   onClose: () => void;
   chat: Chat | null;
+  sessionId: string;
   onAssignmentComplete: () => void;
 }
 
@@ -22,6 +23,7 @@ export const AssignChatDialog = ({
   isOpen,
   onClose,
   chat,
+  sessionId,
   onAssignmentComplete
 }: AssignChatDialogProps) => {
   const [selectedDeveloperId, setSelectedDeveloperId] = useState<string>('');
@@ -40,12 +42,12 @@ export const AssignChatDialog = ({
     isLoading: assignmentLoading,
     refetch: refetchAssignment
   } = useQuery({
-    queryKey: ['assignment', chat?.id.user],
+    queryKey: ['assignment', chat?.id.user, sessionId],
     queryFn: async () => {
-      if (!chat?.id.user) return { success: false, isAssigned: false, assignments: [] };
-      return await getAssignmentByChatId(chat.id.user);
+      if (!chat?.id.user || !sessionId) return { success: false, isAssigned: false, assignments: [] };
+      return await getAssignmentByChatId(chat.id.user, sessionId);
     },
-    enabled: isOpen && !!chat,
+    enabled: isOpen && !!chat && !!sessionId,
   });
 
   // Create assignment mutation
@@ -54,9 +56,9 @@ export const AssignChatDialog = ({
     onSuccess: (data) => {
       toast.success(data.message ?? 'Chat assigned successfully');
       setSelectedDeveloperId('');
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user] });
+      queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user, sessionId] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -68,12 +70,12 @@ export const AssignChatDialog = ({
   // Remove assignment mutation
   const unassignMutation = useMutation({
     mutationFn: ({ chatId, developerId }: { chatId: string, developerId?: string }) => 
-      unassignChat(chatId, developerId),
+      unassignChat(chatId, developerId, sessionId),
     onSuccess: (data) => {
       toast.success(data.message ?? 'Chat assignment removed');
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user] });
+      queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user, sessionId] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -98,7 +100,8 @@ export const AssignChatDialog = ({
     assignMutation.mutate({
       developerId: selectedDeveloperId,
       chatId: chat.id.user,
-      chatName: chat.name
+      chatName: chat.name,
+      sessionId: sessionId
     });
   };
 

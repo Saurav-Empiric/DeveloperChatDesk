@@ -50,6 +50,7 @@ declare global {
         developerId: string;
         chatId: string;
         chatName: string;
+        sessionId: string;
         assignedAt: string;
         createdAt?: string;
         updatedAt?: string;
@@ -77,6 +78,7 @@ declare global {
         developerId: string;
         chatId: string;
         chatName: string;
+        sessionId: string;
     }
 
     interface AssignmentResponse {
@@ -109,6 +111,7 @@ declare global {
     interface ChatAssignmentForView {
         chatId: string;
         chatName: string;
+        sessionId: string;
         developers: DeveloperForAssignment[];
     }
 
@@ -116,16 +119,18 @@ declare global {
         developerId: string;
         chatId: string;
         chatName: string;
-        sessionId?: string;
+        sessionId: string;
     }
 
     interface BulkAssignmentData {
         developerIds: string[];
         chatIds: string[];
+        sessionId: string;
     }
 
     interface AssignmentFilters {
         developerId?: string;
+        sessionId?: string;
         dateFrom?: Date;
         dateTo?: Date;
         search?: string;

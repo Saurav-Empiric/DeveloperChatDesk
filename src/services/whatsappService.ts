@@ -152,11 +152,12 @@ export const syncSessions = async (): Promise<WhatsAppResponse> => {
 }
 
 /**
- * Get all chat assignments
+ * Get all chat assignments for a session
  */
-export const getAssignments = async (): Promise<AssignmentResponse> => {
+export const getAssignments = async (sessionId?: string): Promise<AssignmentResponse> => {
   try {
-    const response = await axios.get('/api/assignments');
+    const url = sessionId ? `/api/assignments?sessionId=${sessionId}` : '/api/assignments';
+    const response = await axios.get(url);
     return {
       success: true,
       assignments: response.data.assignments,
@@ -172,11 +173,14 @@ export const getAssignments = async (): Promise<AssignmentResponse> => {
 };
 
 /**
- * Get assignment by chat ID
+ * Get assignment by chat ID and session
  */
-export const getAssignmentByChatId = async (chatId: string): Promise<AssignmentResponse> => {
+export const getAssignmentByChatId = async (chatId: string, sessionId?: string): Promise<AssignmentResponse> => {
   try {
-    const response = await axios.get(`/api/assignments?chatId=${chatId}`);
+    const url = sessionId 
+      ? `/api/assignments?chatId=${chatId}&sessionId=${sessionId}`
+      : `/api/assignments?chatId=${chatId}`;
+    const response = await axios.get(url);
     return {
       success: true,
       isAssigned: response.data.isAssigned,
@@ -234,11 +238,15 @@ export const deleteAssignment = async (assignmentId: string): Promise<Assignment
 /**
  * Delete a chat assignment by chat ID
  */
-export const unassignChat = async (chatId: string, developerId?: string): Promise<AssignmentResponse> => {
+export const unassignChat = async (chatId: string, developerId?: string, sessionId?: string): Promise<AssignmentResponse> => {
   try {
-    const url = developerId 
-      ? `/api/assignments?chatId=${chatId}&developerId=${developerId}`
-      : `/api/assignments?chatId=${chatId}`;
+    let url = `/api/assignments?chatId=${chatId}`;
+    if (developerId) {
+      url += `&developerId=${developerId}`;
+    }
+    if (sessionId) {
+      url += `&sessionId=${sessionId}`;
+    }
       
     const response = await axios.delete(url);
     return {
