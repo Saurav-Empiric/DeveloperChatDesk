@@ -121,7 +121,12 @@ export const AssignChatDialog = ({
   // Find assigned developers
   const assignedDevelopers = currentAssignments.length > 0 && developers.length > 0
     ? currentAssignments.map(assignment => {
-        const dev = developers.find((d: Developer) => d._id === (assignment.developerId?.toString()));
+        // Handle both cases: developerId as string or as populated object
+        const developerIdString = typeof assignment.developerId === 'string' 
+          ? assignment.developerId 
+          : (assignment.developerId as any)?._id?.toString();
+          
+        const dev = developers.find((d: Developer) => d._id === developerIdString);
         return dev ? {
           id: dev._id,
           name: dev.userId?.name || 'Unknown',
