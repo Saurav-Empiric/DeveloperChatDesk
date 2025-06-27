@@ -227,7 +227,7 @@ export default function AdminChats() {
       await sendMessageMutation.mutateAsync({
         sessionId: selectedSession,
         chatId: selectedChat.id.user,
-        message: newMessage
+        text: newMessage
       });
       setNewMessage('');
       toast.success('Message sent successfully');

@@ -1,19 +1,5 @@
 import axios, { AxiosError } from 'axios';
 
-export interface RegistrationData {
-  name: string;
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  canRegister?: boolean;
-  user?: any;
-}
-
 /**
  * Get the registration status
  */
@@ -33,7 +19,7 @@ export const getRegistrationStatus = async (): Promise<AuthResponse> => {
 /**
  * Register a new user
  */
-export const register = async (data: RegistrationData): Promise<AuthResponse> => {
+export const register = async (data: UserRegistrationData): Promise<AuthResponse> => {
   try {
     const response = await axios.post('/api/auth/register', data);
     return response.data;

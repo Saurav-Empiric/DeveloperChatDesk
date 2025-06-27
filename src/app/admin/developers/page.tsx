@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { type Developer, type DeveloperData, addDeveloper, deleteDeveloper, getDevelopers } from '@/services/developerService';
+import { addDeveloper, deleteDeveloper, getDevelopers } from '@/services/developerService';
 
 export default function DevelopersPage() {
   const { data: session, status } = useSession();

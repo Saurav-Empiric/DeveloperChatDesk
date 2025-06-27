@@ -1,30 +1,5 @@
 import axios, { AxiosError } from 'axios';
 
-export interface DeveloperData {
-  name: string;
-  email: string;
-  password: string;
-}
-
-export interface Developer {
-  _id: string;
-  userId: {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
-  createdAt: string;
-}
-
-export interface DeveloperResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  developers?: Developer[];
-  developer?: Developer;
-}
-
 
   /**
    * Get all developers

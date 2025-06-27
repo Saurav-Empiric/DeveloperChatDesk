@@ -1,5 +1,4 @@
 import axios, { AxiosError } from 'axios';
-
 export interface Chat {
   id: {
     server: string;
@@ -27,7 +26,7 @@ export interface Message {
 export interface MessageData {
   sessionId: string;
   chatId: string;
-  message: string;
+  text: string;
 }
 
 export interface WhatsAppSession {
@@ -50,38 +49,8 @@ export interface WhatsAppResponse {
   messageId?: string;
 }
 
-export interface Assignment {
-  _id: string;
-  developerId: string;
-  chatId: string;
-  chatName: string;
-  assignedAt: string;
-}
-
-export interface AssignmentData {
-  developerId: string;
-  chatId: string;
-  chatName: string;
-}
-
-export interface AssignmentResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  assignments?: Assignment[];
-  assignment?: Assignment;
-  isAssigned?: boolean;
-  unassignedChat?: string;
-  chatDetails?: {
-    id: string;
-    name: string;
-  };
-  developerDetails?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
+// Use ChatAssignment instead of Assignment for consistency
+export type Assignment = ChatAssignment;
 
 /**
  * Get all chats

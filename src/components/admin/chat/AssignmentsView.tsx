@@ -2,21 +2,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, UserPlus, X, Users, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Developer {
-    id: string;
-    name: string;
-    email: string;
-    assignmentId: string;
-    assignedAt: string;
-}
-
-interface ChatAssignment {
-    chatId: string;
-    chatName: string;
-    developers: Developer[];
-}
 
 interface AssignmentsViewProps {
     assignments: any[];
@@ -29,7 +14,7 @@ interface AssignmentsViewProps {
 
 // Separate card component for better organization
 interface AssignmentCardProps {
-    chatAssignment: ChatAssignment;
+    chatAssignment: ChatAssignmentForView;
     onViewChat: (chatId: string) => void;
     onManageAssignment: (chatId: string) => void;
     onUnassign: (chatId: string, developerId: string, developerName: string) => void;
@@ -38,7 +23,7 @@ interface AssignmentCardProps {
 
 // Separate developer row component
 interface DeveloperRowProps {
-    developer: Developer;
+    developer: DeveloperForAssignment;
     onUnassign: () => void;
 }
 
@@ -89,7 +74,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
             {/* Developers List */}
             <div className="p-4">
                 <div className="space-y-3">
-                    {chatAssignment.developers.map((developer) => (
+                    {chatAssignment.developers.map((developer: DeveloperForAssignment) => (
                         <DeveloperRow
                             key={developer.assignmentId}
                             developer={developer}
@@ -146,10 +131,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     onUnassignDeveloper,
 }) => {
     // Group assignments by chat
-    const groupedAssignments: ChatAssignment[] = React.useMemo(() => {
+    const groupedAssignments: ChatAssignmentForView[] = React.useMemo(() => {
         if (!assignments || assignments.length === 0) return [];
 
-        const chatMap = new Map<string, ChatAssignment>();
+        const chatMap = new Map<string, ChatAssignmentForView>();
 
         assignments.forEach((assignment: any) => {
             const chatId = assignment.chatId;
@@ -165,7 +150,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             const chatAssignment = chatMap.get(chatId)!;
 
             // Extract developer info safely
-            const developer: Developer = {
+            const developer: DeveloperForAssignment = {
                 id: assignment.developerId?._id ?? '',
                 name: assignment.developerId?.userId?.name ?? 'Unknown Developer',
                 email: assignment.developerId?.userId?.email ?? '',

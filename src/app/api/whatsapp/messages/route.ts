@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const { chatId, text, sessionId = 'default' } = await req.json();
-
+    console.log('chatId', chatId);
+    console.log('text', text);
     if (!chatId || !text) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }

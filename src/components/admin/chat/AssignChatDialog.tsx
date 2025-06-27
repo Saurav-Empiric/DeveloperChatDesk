@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getDevelopers, type Developer } from '@/services/developerService';
+import { getDevelopers } from '@/services/developerService';
 import { createAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
 import { toast } from 'sonner';
 import { Chat } from './index';
-import { Loader2, UserCheck, AlertCircle, CheckCircle, UserPlus, X } from 'lucide-react';
+import { Loader2, UserCheck, UserPlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface AssignChatDialogProps {
