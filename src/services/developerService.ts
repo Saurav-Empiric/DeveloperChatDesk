@@ -48,7 +48,8 @@ import axios, { AxiosError } from 'axios';
       const response = await axios.delete(`/api/developers?id=${id}`);
       return { 
         success: true, 
-        message: 'Developer deleted successfully' 
+        message: 'Developer deleted successfully',
+        developer: response.data.developer
       };
     } catch (error) {
       const axiosError = error as AxiosError<any>;

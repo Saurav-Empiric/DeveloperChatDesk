@@ -9,6 +9,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 function DeveloperLoginComponent() {
   const router = useRouter();
@@ -27,14 +28,6 @@ function DeveloperLoginComponent() {
       router.push('/admin/dashboard');
     }
   }, [status, session, router]);
-
-  useEffect(() => {
-    // Show redirect message if coming from protected page
-    const redirected = searchParams.get('redirected');
-    if (redirected === 'true') {
-      toast.info('Please login to access the developer dashboard');
-    }
-  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +107,14 @@ function DeveloperLoginComponent() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
               />
+              <div className="text-right">
+                <Link
+                  href="/developer/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             {error && (

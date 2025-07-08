@@ -9,6 +9,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function Login() {
   const router = useRouter();
@@ -87,6 +88,14 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
               />
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             {error && (
@@ -98,12 +107,12 @@ export default function Login() {
             </Button>
 
             <div className="text-center text-sm">
-              <a
+              <Link
                 href="/register"
                 className="text-blue-500 hover:underline"
               >
                 Need an account? Register
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>

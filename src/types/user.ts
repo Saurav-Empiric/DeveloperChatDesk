@@ -27,6 +27,12 @@ declare global {
         email: string;
         password: string;
     }
+
+    interface PasswordResetData {
+        token: string;
+        email: string;
+        password: string;
+      } 
 }
 
 export { }

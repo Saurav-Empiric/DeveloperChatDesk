@@ -5,6 +5,8 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: 'admin' | 'developer';
+  resetToken?: string;
+  resetTokenExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +30,14 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ['admin', 'developer'],
       default: 'developer',
+    },
+    resetToken: {
+      type: String,
+      default: null,
+    },
+    resetTokenExpires: {
+      type: Date,
+      default: null,
     },
   },
   {
