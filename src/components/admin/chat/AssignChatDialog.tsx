@@ -42,10 +42,12 @@ export const AssignChatDialog = ({
     isLoading: assignmentLoading,
     refetch: refetchAssignment
   } = useQuery({
-    queryKey: ['assignment', chat?.id.user, sessionId],
+    queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId],
     queryFn: async () => {
-      if (!chat?.id.user || !sessionId) return { success: false, isAssigned: false, assignments: [] };
-      return await getAssignmentByChatId(chat.id.user, sessionId);
+      if (!chat?.id?.user || !sessionId) return { success: false, isAssigned: false, assignments: [] };
+      // Use serialized ID if available
+      const chatIdToUse = chat.id._serialized || chat.id.user;
+      return await getAssignmentByChatId(chatIdToUse, sessionId);
     },
     enabled: isOpen && !!chat && !!sessionId,
   });
@@ -58,7 +60,7 @@ export const AssignChatDialog = ({
       setSelectedDeveloperId('');
       queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user, sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -75,7 +77,7 @@ export const AssignChatDialog = ({
       toast.success(data.message ?? 'Chat assignment removed');
       queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id.user, sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -107,12 +109,17 @@ export const AssignChatDialog = ({
 
   const handleUnassignDeveloper = async (developerId: string) => {
     if (!chat || !chat.id.user) return;
-    unassignMutation.mutate({ chatId: chat.id.user, developerId });
+    unassignMutation.mutate({ 
+      chatId: chat.id._serialized || chat.id.user, // Use serialized ID if available
+      developerId 
+    });
   };
 
   const handleUnassignAll = async () => {
     if (!chat || !chat.id.user) return;
-    unassignMutation.mutate({ chatId: chat.id.user });
+    unassignMutation.mutate({ 
+      chatId: chat.id._serialized || chat.id.user // Use serialized ID if available
+    });
   };
 
   const developers = developerData?.developers || [];

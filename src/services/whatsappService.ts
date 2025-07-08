@@ -47,6 +47,12 @@ export interface WhatsAppResponse {
   messages?: Message[];
   sessions?: WhatsAppSession[];
   messageId?: string;
+  pagination?: {
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+  chatType?: string;
 }
 
 // Use ChatAssignment instead of Assignment for consistency
@@ -55,15 +61,29 @@ export type Assignment = ChatAssignment;
 /**
  * Get all chats
  */
-export const getChats = async (sessionId?: string): Promise<WhatsAppResponse> => {
+export const getChats = async (
+  sessionId?: string, 
+  limit: number = 20, 
+  offset: number = 0
+): Promise<WhatsAppResponse> => {
   try {
-    const url = sessionId
-      ? `/api/whatsapp/chats?sessionId=${sessionId}`
-      : '/api/whatsapp/chats';
+    let url = '/api/whatsapp/chats';
+    const params = new URLSearchParams();
+    
+    if (sessionId) {
+      params.append('sessionId', sessionId);
+    }
+    
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    url = `${url}?${params.toString()}`;
+    
     const response = await axios.get(url);
     return {
       success: true,
-      chats: response.data.chats
+      chats: response.data.chats,
+      pagination: response.data.pagination
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;
@@ -77,12 +97,27 @@ export const getChats = async (sessionId?: string): Promise<WhatsAppResponse> =>
 /**
  * Get messages for a specific chat
  */
-export const getMessages = async (sessionId: string, chatId: string): Promise<WhatsAppResponse> => {
+export const getMessages = async (
+  sessionId: string, 
+  chatId: string,
+  limit: number = 20,
+  offset: number = 0
+): Promise<WhatsAppResponse> => {
   try {
-    const response = await axios.get(`/api/whatsapp/messages?sessionId=${sessionId}&chatId=${chatId}`);
+    const params = new URLSearchParams();
+    params.append('sessionId', sessionId);
+    params.append('chatId', chatId);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    const url = `/api/whatsapp/messages?${params.toString()}`;
+    const response = await axios.get(url);
+    
     return {
       success: true,
-      messages: response.data.messages
+      messages: response.data.messages,
+      chatType: response.data.chatType,
+      pagination: response.data.pagination
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;
@@ -152,7 +187,7 @@ export const syncSessions = async (): Promise<WhatsAppResponse> => {
 }
 
 /**
- * Get all chat assignments for a session
+ * Get all chat assignments
  */
 export const getAssignments = async (sessionId?: string): Promise<AssignmentResponse> => {
   try {
@@ -161,7 +196,6 @@ export const getAssignments = async (sessionId?: string): Promise<AssignmentResp
     return {
       success: true,
       assignments: response.data.assignments,
-      
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;

@@ -18,9 +18,11 @@ export async function GET(req: NextRequest) {
     // Connect to the database
     await connectToDatabase();
 
-    // Get the session ID from the query params
+    // Get the session ID and pagination params from the query params
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get('sessionId') ?? 'default';
+    const limit = parseInt(searchParams.get('limit') ?? '20', 10);
+    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
     // Find the session in the database
     let whatsappSession = await WhatsAppSession.findOne({ sessionId });
@@ -55,8 +57,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
-      // Get all chats from WAHA
-      const response = await wahaApi.getChats(sessionId);
+      // Get paginated chats from WAHA
+      const response = await wahaApi.getChats(sessionId, limit, offset);
 
       // Get all chat assignments for this specific session
       const assignments = await ChatAssignment.find({ 
@@ -87,7 +89,16 @@ export async function GET(req: NextRequest) {
         };
       });
 
-      return NextResponse.json({ success: true, chats });
+      // Return the chats with pagination metadata
+      return NextResponse.json({ 
+        success: true, 
+        chats,
+        pagination: {
+          limit,
+          offset,
+          hasMore: chats.length === limit // If we got exactly the limit number of chats, there might be more
+        }
+      });
     } else if (session.user.role === 'developer') {
       // Developer can only access chats assigned to them
       const developer = await Developer.findOne({ userId: session.user.id });
@@ -105,15 +116,24 @@ export async function GET(req: NextRequest) {
       // Get assigned chat IDs
       const assignedChatIds = assignments.map(assignment => assignment.chatId);
 
-      // Get all chats from WAHA
-      const response = await wahaApi.getChats(sessionId);
+      // Get paginated chats from WAHA
+      const response = await wahaApi.getChats(sessionId, limit, offset);
 
       // Filter chats to only include those assigned to the developer
       const chats = response.data.filter((chat: any) => 
         assignedChatIds.includes(chat.id)
       );
 
-      return NextResponse.json({ success: true, chats });
+      // Return the chats with pagination metadata
+      return NextResponse.json({ 
+        success: true, 
+        chats,
+        pagination: {
+          limit,
+          offset,
+          hasMore: response.data.length === limit && chats.length > 0 // Check if there might be more chats
+        }
+      });
     } else {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

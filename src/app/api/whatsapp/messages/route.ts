@@ -109,6 +109,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
     const sessionId = searchParams.get('sessionId') ?? 'default';
+    const limit = parseInt(searchParams.get('limit') ?? '20', 10);
+    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
     if (!chatId) {
       return NextResponse.json({ error: 'Chat ID is required' }, { status: 400 });
@@ -168,12 +170,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get the messages
-    const response = await wahaApi.getChatMessages(sessionId, chatId);
+    // Determine the chat type
+    const chatType = wahaApi.determineChatType(chatId);
+    // Get the messages with pagination
+    const response = await wahaApi.getChatMessages(sessionId, chatId, limit, offset);
 
     return NextResponse.json({
       success: true,
       messages: response.data,
+      chatType: chatType,
+      pagination: {
+        limit,
+        offset,
+        hasMore: response.data.length === limit // If we got exactly the limit number of messages, there might be more
+      }
     });
   } catch (error) {
     console.error('Error getting messages:', error);

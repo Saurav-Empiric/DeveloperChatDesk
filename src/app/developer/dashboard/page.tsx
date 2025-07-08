@@ -115,10 +115,12 @@ export default function DeveloperDashboard() {
     isLoading: messagesLoading,
     refetch: refetchMessages
   } = useQuery({
-    queryKey: ['messages', selectedChat?.sessionId, selectedChat?.chatId],
+    queryKey: ['messages', selectedChat?.sessionId, selectedChat?.id?._serialized],
     queryFn: async () => {
       if (!selectedChat) return { messages: [] };
-      const response = await getMessages(selectedChat.sessionId, selectedChat.chatId);
+      // Use serialized ID if available, otherwise fall back to chatId
+      const chatId = selectedChat.id?._serialized || selectedChat.chatId;
+      const response = await getMessages(selectedChat.sessionId, chatId);
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch messages');
       }
@@ -142,14 +144,19 @@ export default function DeveloperDashboard() {
   });
 
   // Transform messages for UI
-  const messages: UIMessage[] = useMemo(() => {
+  const messages = useMemo(() => {
     if (!messagesData?.messages) return [];
     return messagesData.messages
-      .map((message: any) => ({ // Use any to access potential fromMe property
+      .map((message: any) => ({
         id: message.id,
         body: message.body,
         timestamp: message.timestamp,
-        fromMe: message.fromMe === true || message.from === 'me'
+        fromMe: message.fromMe === true || message.from === 'me',
+        from: message.from || '',
+        to: message.to || '',
+        type: message.type || 'chat',
+        text: message.body || '',
+        isFromMe: message.fromMe === true || message.from === 'me'
       }))
       .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp to ensure latest at bottom
   }, [messagesData]);
@@ -175,7 +182,8 @@ export default function DeveloperDashboard() {
 
     const messageData: MessageData = {
       sessionId: selectedChat.sessionId,
-      chatId: selectedChat.chatId,
+      // Use serialized ID if available, otherwise fall back to chatId
+      chatId: selectedChat.id?._serialized || selectedChat.chatId,
       text: newMessage
     };
 

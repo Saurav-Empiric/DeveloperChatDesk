@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { developerId, chatId, chatName, sessionId } = await req.json();
+    const { developerId, chatId, chatSerializedId, chatName, sessionId } = await req.json();
 
-    if (!developerId || !chatId || !chatName || !sessionId) {
+    if (!developerId || !chatId || !chatName || !sessionId || !chatSerializedId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     // Check if this specific assignment already exists for this session
     const existingAssignment = await ChatAssignment.findOne({
       chatId,
+      chatSerializedId,
       developerId,
       sessionId,
     });
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
     const assignment = await ChatAssignment.create({
       developerId,
       chatId,
+      chatSerializedId,
       chatName,
       sessionId,
       assignedAt: new Date(),

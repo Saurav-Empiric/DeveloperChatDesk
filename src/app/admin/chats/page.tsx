@@ -11,9 +11,16 @@ import {
   unassignChat,
   type MessageData,
   type Chat as ServiceChat,
-  type Message as ServiceMessage
+  type Message as ServiceMessage,
+  type WhatsAppResponse
 } from '@/services/whatsappService';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+  useMutation, 
+  useQuery, 
+  useQueryClient, 
+  useInfiniteQuery,
+  type InfiniteData
+} from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -91,6 +98,27 @@ const transformMessage = (serviceMessage: ServiceMessage): Message => ({
   isFromMe: serviceMessage.from === 'me'
 });
 
+// Define the shape of the paginated response
+interface ChatPage {
+  chats: ServiceChat[];
+  pagination: {
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+// Define the shape of the paginated messages response
+interface MessagesPage {
+  messages: ServiceMessage[];
+  chatType: string;
+  pagination: {
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
 export default function AdminChats() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -123,41 +151,108 @@ export default function AdminChats() {
     refetchOnWindowFocus: false,
   });
 
-  // React Query for WhatsApp chats
+  // React Query for WhatsApp chats with infinite scrolling
   const {
-    data: rawChats = [],
+    data: chatsData,
     isLoading: chatsLoading,
     error: chatsError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     refetch: refetchChats
-  } = useQuery({
+  } = useInfiniteQuery<ChatPage, Error>({
     queryKey: QUERY_KEYS.CHATS(selectedSession),
-    queryFn: async () => {
-      if (!selectedSession) return [];
-      const response = await getChats(selectedSession);
+    queryFn: async ({ pageParam }) => {
+      if (!selectedSession) return { 
+        chats: [], 
+        pagination: { limit: 20, offset: 0, hasMore: false } 
+      };
+      
+      const response = await getChats(selectedSession, 20, pageParam as number);
+      
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch chats');
       }
-      return response.chats || [];
+      
+      return {
+        chats: response.chats || [],
+        pagination: {
+          limit: 20,
+          offset: pageParam as number,
+          hasMore: !!response.pagination?.hasMore
+        }
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination.hasMore) return undefined;
+      return lastPage.pagination.offset + lastPage.pagination.limit;
     },
     enabled: !!selectedSession,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false,
   });
 
-  // React Query for Get messages for the selected chat
+  // Flatten the chats from all pages
+  const rawChats = useMemo(() => {
+    if (!chatsData) return [];
+    return chatsData.pages.flatMap(page => page.chats || []);
+  }, [chatsData]);
+
+  // React Query for Get messages for the selected chat with infinite scrolling
   const {
     data: messagesData,
     error: messagesError,
     isLoading: messagesLoading,
+    fetchNextPage: fetchNextMessages,
+    hasNextPage: hasMoreMessages,
+    isFetchingNextPage: isFetchingNextMessages,
     refetch: refetchMessages,
-  } = useQuery({
-    queryKey: ['messages', selectedSession, selectedChat?.id?.user],
-    queryFn: async () => {
-      if (!selectedSession || !selectedChat) return { success: true, messages: [] };
-      return getMessages(selectedSession, selectedChat.id.user);
+  } = useInfiniteQuery<MessagesPage, Error>({
+    queryKey: ['messages', selectedSession, selectedChat?.id?._serialized],
+    queryFn: async ({ pageParam }) => {
+      if (!selectedSession || !selectedChat) return { 
+        messages: [], 
+        chatType: 'unknown',
+        pagination: { limit: 20, offset: 0, hasMore: false } 
+      };
+      
+      const response = await getMessages(
+        selectedSession, 
+        selectedChat.id._serialized, // Use serialized ID instead of user ID
+        20,
+        pageParam as number
+      );
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch messages');
+      }
+      
+      return {
+        messages: response.messages || [],
+        chatType: response.chatType || 'unknown',
+        pagination: response.pagination || { 
+          limit: 20, 
+          offset: pageParam as number, 
+          hasMore: false 
+        }
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination.hasMore) return undefined;
+      return lastPage.pagination.offset + lastPage.pagination.limit;
     },
     enabled: !!selectedSession && !!selectedChat,
   });
+
+  // Flatten the messages from all pages
+  const messages = useMemo(() => {
+    if (!messagesData) return [];
+    return messagesData.pages.flatMap(page => 
+      (page.messages || []).map(transformMessage)
+    );
+  }, [messagesData]);
 
   // React Query mutation for sending messages
   const sendMessageMutation = useMutation({
@@ -203,10 +298,14 @@ export default function AdminChats() {
   });
 
   // Transform data
-  const messages = useMemo(() => {
-    if (!messagesData?.messages) return [];
-    return messagesData.messages.map(transformMessage);
-  }, [messagesData]);
+  const assignments = assignmentsData || [];
+
+  // Process assignments for chat display
+  const enhancedChats = useMemo(() => {
+    if (rawChats.length === 0) return [];
+    // Convert each chat with its assignments
+    return rawChats.map((chat: ServiceChat) => transformChat(chat, assignments));
+  }, [rawChats, assignments]);
 
   // Auto-select first session when sessions are loaded
   useEffect(() => {
@@ -227,7 +326,7 @@ export default function AdminChats() {
     try {
       await sendMessageMutation.mutateAsync({
         sessionId: selectedSession,
-        chatId: selectedChat.id.user,
+        chatId: selectedChat.id._serialized, // Use serialized ID instead of user ID
         text: newMessage
       });
       setNewMessage('');
@@ -289,8 +388,13 @@ export default function AdminChats() {
     }
   };
 
+  // Handle view chat from assignment
   const handleViewChatFromAssignment = (chatId: string) => {
-    const chat = enhancedChats.find(c => c.id.user === chatId);
+    // Find chat by serialized ID if possible, or fall back to user ID
+    const chat = enhancedChats.find(c => 
+      c.id._serialized 
+    );
+    
     if (chat) {
       setSelectedChat(chat);
       setActiveTab('chats');
@@ -300,7 +404,11 @@ export default function AdminChats() {
   };
 
   const handleManageAssignmentFromView = (chatId: string) => {
-    const chat = enhancedChats.find(c => c.id.user === chatId);
+    // Find chat by serialized ID if possible, or fall back to user ID
+    const chat = enhancedChats.find(c => 
+      c.id._serialized 
+    );
+    
     if (chat) {
       setSelectedChat(chat);
       handleOpenAssignDialog();
@@ -308,16 +416,6 @@ export default function AdminChats() {
       toast.error("Chat not found. Please try refreshing the page.");
     }
   };
-
-  // Use assignments data directly since API now populates developer info
-  const assignments = assignmentsData || [];
-
-  // Process assignments for chat display
-  const enhancedChats = useMemo(() => {
-    if (rawChats.length === 0) return [];
-    // Convert each chat with its assignments
-    return rawChats.map((chat: ServiceChat) => transformChat(chat, assignments));
-  }, [rawChats, assignments]);
 
   // Handle direct assign from chat list
   const handleQuickAssign = useCallback((chat: Chat) => {
@@ -378,6 +476,9 @@ export default function AdminChats() {
                   onChatSelect={handleChatSelect}
                   onAssignChat={handleQuickAssign}
                   isLoading={chatsLoading || assignmentsLoading}
+                  hasMore={!!hasNextPage}
+                  isFetchingMore={isFetchingNextPage}
+                  loadMore={fetchNextPage}
                 />
 
                 {/* Chat Messages Area */}
@@ -391,7 +492,10 @@ export default function AdminChats() {
                       <MessagesArea
                         messages={messages}
                         isLoading={messagesLoading}
-                        isError={!!messagesError}
+                        hasMore={hasMoreMessages}
+                        isFetchingMore={isFetchingNextMessages}
+                        loadMore={fetchNextMessages}
+                        chatType={messagesData?.pages[0]?.chatType}
                       />
                       <MessageInput
                         message={newMessage}
