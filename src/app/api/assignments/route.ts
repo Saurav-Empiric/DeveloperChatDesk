@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { developerId, chatId, chatSerializedId, chatName, sessionId } = await req.json();
+    const { developerId, chatId, chatName, sessionId } = await req.json();
 
-    if (!developerId || !chatId || !chatName || !sessionId || !chatSerializedId) {
+    if (!developerId || !chatId || !chatName || !sessionId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
     // Check if this specific assignment already exists for this session
     const existingAssignment = await ChatAssignment.findOne({
       chatId,
-      chatSerializedId,
       developerId,
       sessionId,
     });
@@ -56,7 +55,6 @@ export async function POST(req: NextRequest) {
     const assignment = await ChatAssignment.create({
       developerId,
       chatId,
-      chatSerializedId,
       chatName,
       sessionId,
       assignedAt: new Date(),
@@ -99,7 +97,7 @@ export async function GET(req: NextRequest) {
         if (sessionId) {
           query.sessionId = sessionId;
         }
-        
+
         const assignments = await ChatAssignment.find(query)
           .populate('developerId');
 
@@ -116,7 +114,7 @@ export async function GET(req: NextRequest) {
         if (sessionId) {
           query.sessionId = sessionId;
         }
-        
+
         const assignments = await ChatAssignment.find(query)
           .sort({ assignedAt: -1 });
 
@@ -128,7 +126,7 @@ export async function GET(req: NextRequest) {
       if (sessionId) {
         query.sessionId = sessionId;
       }
-      
+
       const assignments = await ChatAssignment.find(query)
         .populate({
           path: 'developerId',
@@ -159,7 +157,7 @@ export async function GET(req: NextRequest) {
         if (sessionId) {
           query.sessionId = sessionId;
         }
-        
+
         const assignment = await ChatAssignment.findOne(query);
 
         if (!assignment) {
@@ -179,7 +177,7 @@ export async function GET(req: NextRequest) {
       if (sessionId) {
         query.sessionId = sessionId;
       }
-      
+
       const assignments = await ChatAssignment.find(query).sort({ assignedAt: -1 });
 
       return NextResponse.json({ success: true, assignments });
@@ -248,7 +246,7 @@ export async function DELETE(req: NextRequest) {
         if (sessionId) {
           query.sessionId = sessionId;
         }
-        
+
         assignment = await ChatAssignment.findOneAndDelete(query).populate('developerId');
 
         if (assignment) {
@@ -275,7 +273,7 @@ export async function DELETE(req: NextRequest) {
         if (sessionId) {
           query.sessionId = sessionId;
         }
-        
+
         const deletedAssignments = await ChatAssignment.find(query)
           .populate('developerId');
 
@@ -288,7 +286,7 @@ export async function DELETE(req: NextRequest) {
 
           // Delete all assignments
           await ChatAssignment.deleteMany(query);
-          
+
           // Set a flag to indicate multiple deletions
           assignment = { _id: 'multiple', chatId, chatName: deletedAssignments[0].chatName };
         }

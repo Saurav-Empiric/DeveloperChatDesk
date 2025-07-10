@@ -1,20 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getDevelopers } from '@/services/developerService';
-import { createAssignment, unassignChat, getAssignmentByChatId } from '@/services/whatsappService';
-import { toast } from 'sonner';
-import { Chat } from './index';
-import { Loader2, UserCheck, UserPlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getDevelopers } from '@/services/developerService';
+import { createAssignment, getAssignmentByChatId, unassignChat } from '@/services/whatsappService';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, UserCheck, UserPlus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface AssignChatDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  chat: Chat | null;
+  chat: any | null;
   sessionId: string;
   onAssignmentComplete: () => void;
 }
@@ -42,11 +41,11 @@ export const AssignChatDialog = ({
     isLoading: assignmentLoading,
     refetch: refetchAssignment
   } = useQuery({
-    queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId],
+    queryKey: ['assignment', chat?.id?._serialized, sessionId],
     queryFn: async () => {
-      if (!chat?.id?.user || !sessionId) return { success: false, isAssigned: false, assignments: [] };
+      if (!chat?.id?._serialized || !sessionId) return { success: false, isAssigned: false, assignments: [] };
       // Use serialized ID if available
-      const chatIdToUse = chat.id._serialized || chat.id.user;
+      const chatIdToUse = chat.id._serialized;
       return await getAssignmentByChatId(chatIdToUse, sessionId);
     },
     enabled: isOpen && !!chat && !!sessionId,
@@ -60,7 +59,8 @@ export const AssignChatDialog = ({
       setSelectedDeveloperId('');
       queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized, sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['developers'] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -71,13 +71,13 @@ export const AssignChatDialog = ({
 
   // Remove assignment mutation
   const unassignMutation = useMutation({
-    mutationFn: ({ chatId, developerId }: { chatId: string, developerId?: string }) => 
+    mutationFn: ({ chatId, developerId }: { chatId: string, developerId?: string }) =>
       unassignChat(chatId, developerId, sessionId),
     onSuccess: (data) => {
       toast.success(data.message ?? 'Chat assignment removed');
       queryClient.invalidateQueries({ queryKey: ['chats', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['assignments', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized || chat?.id?.user, sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignment', chat?.id?._serialized, sessionId] });
       refetchAssignment();
       onAssignmentComplete();
     },
@@ -90,7 +90,7 @@ export const AssignChatDialog = ({
   useEffect(() => {
     if (isOpen && chat) {
       setSelectedDeveloperId('');
-      if (chat.id.user) {
+      if (chat.id._serialized) {
         refetchAssignment();
       }
     }
@@ -101,24 +101,24 @@ export const AssignChatDialog = ({
 
     assignMutation.mutate({
       developerId: selectedDeveloperId,
-      chatId: chat.id.user,
+      chatId: chat.id._serialized,
       chatName: chat.name,
       sessionId: sessionId
     });
   };
 
   const handleUnassignDeveloper = async (developerId: string) => {
-    if (!chat || !chat.id.user) return;
-    unassignMutation.mutate({ 
-      chatId: chat.id._serialized || chat.id.user, // Use serialized ID if available
-      developerId 
+    if (!chat || !chat.id._serialized) return;
+    unassignMutation.mutate({
+      chatId: chat.id._serialized, // Use serialized ID if available
+      developerId
     });
   };
 
   const handleUnassignAll = async () => {
-    if (!chat || !chat.id.user) return;
-    unassignMutation.mutate({ 
-      chatId: chat.id._serialized || chat.id.user // Use serialized ID if available
+    if (!chat || !chat.id._serialized) return;
+    unassignMutation.mutate({
+      chatId: chat.id._serialized // Use serialized ID if available
     });
   };
 
@@ -131,23 +131,23 @@ export const AssignChatDialog = ({
   // Find assigned developers
   const assignedDevelopers = currentAssignments.length > 0 && developers.length > 0
     ? currentAssignments.map(assignment => {
-        // Handle both cases: developerId as string or as populated object
-        const developerIdString = typeof assignment.developerId === 'string' 
-          ? assignment.developerId 
-          : (assignment.developerId as any)?._id?.toString();
-          
-        const dev = developers.find((d: Developer) => d._id === developerIdString);
-        return dev ? {
-          id: dev._id,
-          name: dev.userId?.name || 'Unknown',
-          email: dev.userId?.email || '',
-          assignmentId: assignment._id
-        } : null;
-      }).filter(Boolean)
+      // Handle both cases: developerId as string or as populated object
+      const developerIdString = typeof assignment.developerId === 'string'
+        ? assignment.developerId
+        : (assignment.developerId as any)?._id?.toString();
+
+      const dev = developers.find((d: Developer) => d._id === developerIdString);
+      return dev ? {
+        id: dev._id,
+        name: dev.userId?.name || 'Unknown',
+        email: dev.userId?.email || '',
+        assignmentId: assignment._id
+      } : null;
+    }).filter(Boolean)
     : [];
 
   // Filter developers that are already assigned
-  const availableDevelopers = developers.filter(dev => 
+  const availableDevelopers = developers.filter(dev =>
     !assignedDevelopers.some(assigned => assigned?.id === dev._id)
   );
 
@@ -163,8 +163,8 @@ export const AssignChatDialog = ({
             )}
           </DialogTitle>
           <DialogDescription>
-            {isAssigned 
-              ? "Manage developer assignments for this chat. You can assign additional developers or remove existing assignments." 
+            {isAssigned
+              ? "Manage developer assignments for this chat. You can assign additional developers or remove existing assignments."
               : "Select developers to handle this chat conversation."}
           </DialogDescription>
         </DialogHeader>
@@ -176,97 +176,97 @@ export const AssignChatDialog = ({
             </div>
           ) : (
             <>
-                              <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
-                      <AvatarFallback className="bg-green-100 text-green-600">
-                        {chat?.name.charAt(0).toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-medium text-sm sm:text-base break-words">{chat?.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        {chat?.isGroup ? 'Group chat' : 'Individual chat'}
-                      </p>
-                    </div>
+              <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                    <AvatarFallback className="bg-green-100 text-green-600">
+                      {chat?.name.charAt(0).toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium text-sm sm:text-base break-words">{chat?.name}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      {chat?.isGroup ? 'Group chat' : 'Individual chat'}
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                              {assignedDevelopers.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Current Assignments</h4>
-                    <div className="space-y-2 max-h-48 sm:max-h-60 overflow-y-auto">
-                      {assignedDevelopers.map(developer => (
-                        <div key={developer?.assignmentId || developer?.id} className="p-2 sm:p-3 border rounded-lg bg-green-50 border-green-100">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                                <AvatarFallback className="bg-green-600 text-white text-xs sm:text-sm">
-                                  {developer?.name.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-xs sm:text-sm truncate">{developer?.name}</p>
-                                <p className="text-xs text-gray-600 truncate">{developer?.email}</p>
-                              </div>
+              {assignedDevelopers.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Current Assignments</h4>
+                  <div className="space-y-2 max-h-48 sm:max-h-60 overflow-y-auto">
+                    {assignedDevelopers.map(developer => (
+                      <div key={developer?.assignmentId || developer?.id} className="p-2 sm:p-3 border rounded-lg bg-green-50 border-green-100">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                              <AvatarFallback className="bg-green-600 text-white text-xs sm:text-sm">
+                                {developer?.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-xs sm:text-sm truncate">{developer?.name}</p>
+                              <p className="text-xs text-gray-600 truncate">{developer?.email}</p>
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleUnassignDeveloper(developer?.id || '')}
-                              disabled={isSubmitting}
-                              className="flex-shrink-0 h-7 w-7 p-0 sm:h-8 sm:w-8"
-                            >
-                              <X className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                            </Button>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleUnassignDeveloper(developer?.id || '')}
+                            disabled={isSubmitting}
+                            className="flex-shrink-0 h-7 w-7 p-0 sm:h-8 sm:w-8"
+                          >
+                            <X className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                          </Button>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                              <div>
-                  <Label htmlFor="developer" className="text-sm sm:text-base">
-                    {isAssigned ? 'Assign to additional developer' : 'Select Developer'}
-                  </Label>
-                  <Select
-                    value={selectedDeveloperId}
-                    onValueChange={setSelectedDeveloperId}
-                    disabled={isSubmitting || availableDevelopers.length === 0}
-                  >
-                    <SelectTrigger id="developer" className="mt-2">
-                      <SelectValue placeholder="Choose a developer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableDevelopers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          {developers.length === 0 ? 'No developers available' : 'All developers assigned'}
-                        </SelectItem>
-                      ) : (
-                        availableDevelopers.map((developer: Developer) => (
-                          <SelectItem key={developer._id} value={developer._id}>
-                            <span className="text-sm">{developer.userId.name} ({developer.userId.email})</span>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
                 </div>
+              )}
+
+              <div>
+                <Label htmlFor="developer" className="text-sm sm:text-base">
+                  {isAssigned ? 'Assign to additional developer' : 'Select Developer'}
+                </Label>
+                <Select
+                  value={selectedDeveloperId}
+                  onValueChange={setSelectedDeveloperId}
+                  disabled={isSubmitting || availableDevelopers.length === 0}
+                >
+                  <SelectTrigger id="developer" className="mt-2">
+                    <SelectValue placeholder="Choose a developer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDevelopers.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        {developers.length === 0 ? 'No developers available' : 'All developers assigned'}
+                      </SelectItem>
+                    ) : (
+                      availableDevelopers.map((developer: Developer) => (
+                        <SelectItem key={developer._id} value={developer._id}>
+                          <span className="text-sm">{developer.userId.name} ({developer.userId.email})</span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </>
           )}
         </div>
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
-          <Button 
-            variant="outline" 
-            onClick={onClose} 
-            disabled={isSubmitting} 
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
             className="w-full sm:w-auto"
           >
             Close
           </Button>
-          
+
           {isAssigned ? (
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
@@ -280,7 +280,7 @@ export const AssignChatDialog = ({
                 )}
                 Remove All
               </Button>
-              
+
               <Button
                 variant="default"
                 onClick={handleAssign}

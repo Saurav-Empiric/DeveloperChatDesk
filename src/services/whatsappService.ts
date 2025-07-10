@@ -180,6 +180,12 @@ export const getAssignmentByChatId = async (chatId: string, sessionId?: string):
 export const createAssignment = async (data: AssignmentData): Promise<AssignmentResponse> => {
   try {
     const response = await axios.post('/api/assignments', data);
+
+    if (!response.data.success) {
+      console.error(response.data);
+      throw new Error(response.data.error);
+    }
+
     return {
       success: true,
       message: response.data.message,
@@ -190,7 +196,7 @@ export const createAssignment = async (data: AssignmentData): Promise<Assignment
     const errorMessage = axiosError.response?.data?.error ||
       'Failed to assign chat';
     console.error('Error assigning chat:', error);
-    return { success: false, error: errorMessage };
+    throw new Error(errorMessage);
   }
 };
 
