@@ -27,9 +27,9 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader = ({ selectedChat, onOpenAssignDialog }: ChatHeaderProps) => {
-  const hasMultipleDevs = selectedChat.assignedCount && selectedChat.assignedCount > 1;
+  const hasMultipleDevs = Boolean(selectedChat.assignedCount && selectedChat.assignedCount > 1);
   const developers = selectedChat.developers || [];
-  
+
   return (
     <div className="p-4 border-b border-gray-200 bg-green-50">
       <div className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export const ChatHeader = ({ selectedChat, onOpenAssignDialog }: ChatHeaderProps
           </Button>
         </div>
       </div>
-      
+
       {/* Assignment summary when multiple developers */}
       {hasMultipleDevs && developers.length > 0 && (
         <div className="mt-3 pt-2 border-t border-gray-200 flex gap-1 flex-wrap">

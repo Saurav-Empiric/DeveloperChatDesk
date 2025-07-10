@@ -78,19 +78,6 @@ const transformChat = (serviceChat: any, assignments: any[] = []): ExtendedChat 
   };
 };
 
-// Helper function to transform service message to UI message
-const transformMessage = (serviceMessage: any) => ({
-  id: serviceMessage.id,
-  body: serviceMessage.body,
-  from: serviceMessage.from,
-  to: serviceMessage.to,
-  timestamp: serviceMessage.timestamp,
-  type: serviceMessage.type,
-  text: serviceMessage.body,
-  fromMe: serviceMessage.from === 'me',
-  isFromMe: serviceMessage.from === 'me'
-});
-
 // Define the shape of the paginated response
 interface ChatPage {
   chats: any;
@@ -285,10 +272,9 @@ export default function AdminChats() {
   const messages = useMemo(() => {
     if (!messagesData) return [];
     return messagesData.pages.flatMap(page =>
-      (page.messages || []).map(transformMessage)
+      (page.messages || [])
     );
   }, [messagesData]);
-
 
   // Transform data
   const assignments = assignmentsData || [];

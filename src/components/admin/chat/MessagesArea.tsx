@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { MessageBubble, Message } from './MessageBubble';
+import { MessageBubble } from './MessageBubble';
 import { Loader2 } from 'lucide-react';
 
 interface MessagesAreaProps {
-  messages: Message[];
+  messages: any;
   isLoading: boolean;
   hasMore?: boolean;
   isFetchingMore?: boolean;
@@ -93,7 +93,7 @@ export const MessagesArea = ({
             {chatType === 'channel' && '📣 Channel'}
           </div>
           
-          {messages.map((message) => (
+          {messages.map((message: any) => (
             <MessageBubble key={message.id} message={message} />
           ))}
           <div ref={messagesEndRef} />
