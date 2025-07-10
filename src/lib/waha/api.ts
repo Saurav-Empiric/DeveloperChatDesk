@@ -123,7 +123,6 @@ class WahaApiService {
 
   // Personal chat messages
   async getPersonalChatMessages(sessionId: string, chatId: string, limit: number = 20, offset: number = 0) {
-    console.log('getPersonalChatMessages', sessionId, chatId, limit, offset);
     return this.api.get(`/${sessionId}/chats/${chatId}/messages?limit=${limit}&offset=${offset}`);
   }
 

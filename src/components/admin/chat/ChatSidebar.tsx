@@ -1,17 +1,17 @@
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Loader2, Users, ChevronDown } from 'lucide-react';
-import { ChatItem, type Chat } from './ChatItem';
+import { ChatItem } from './ChatItem';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface ChatSidebarProps {
-  chats: Chat[];
+  chats: any;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  selectedChat: Chat | null;
-  onChatSelect: (chat: Chat) => void;
-  onAssignChat?: (chat: Chat) => void;
+  selectedChat: any | null;
+  onChatSelect: (chat: any) => void;
+  onAssignChat?: (chat: any) => void;
   isLoading: boolean;
   showAssigned?: boolean;
   // Infinite scrolling props
@@ -37,7 +37,7 @@ export const ChatSidebar = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   
-  const filteredChats = chats.filter(chat => {
+  const filteredChats = chats.filter((chat: any) => {
     const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase());
     // If filter is active, only show assigned chats
     if (filterAssigned && !chat.isAssigned) {
@@ -129,7 +129,7 @@ export const ChatSidebar = ({
           </div>
         ) : (
           <>
-            {filteredChats.map((chat: Chat) => (
+            {filteredChats.map((chat: any) => (
               <ChatItem
                 key={chat.id.user}
                 chat={chat}

@@ -9,17 +9,12 @@ import {
   getSessions,
   sendMessage as sendMessageService,
   unassignChat,
-  type MessageData,
-  type Chat as ServiceChat,
-  type Message as ServiceMessage,
-  type WhatsAppResponse
 } from '@/services/whatsappService';
-import { 
-  useMutation, 
-  useQuery, 
-  useQueryClient, 
+import {
   useInfiniteQuery,
-  type InfiniteData
+  useMutation,
+  useQuery,
+  useQueryClient
 } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -38,13 +33,11 @@ import {
   NoChatSelectedState,
   NoSessionsState,
   SessionSelector,
-  type Chat,
-  type Message
 } from '@/components/admin/chat';
 import { QUERY_KEYS } from '@/lib/constants';
 
 // Extend the Chat type to include multiple developers
-type ExtendedChat = Chat & {
+type ExtendedChat = any & {
   developers?: Array<{
     id: string;
     name: string;
@@ -55,7 +48,7 @@ type ExtendedChat = Chat & {
 };
 
 // Helper function to transform service chat to UI chat
-const transformChat = (serviceChat: ServiceChat, assignments: any[] = []): ExtendedChat => {
+const transformChat = (serviceChat: any, assignments: any[] = []): ExtendedChat => {
   // Find all assignments for this chat
   const chatAssignments = assignments.filter(
     assignment => assignment.chatId === serviceChat.id.user
@@ -86,7 +79,7 @@ const transformChat = (serviceChat: ServiceChat, assignments: any[] = []): Exten
 };
 
 // Helper function to transform service message to UI message
-const transformMessage = (serviceMessage: ServiceMessage): Message => ({
+const transformMessage = (serviceMessage: any) => ({
   id: serviceMessage.id,
   body: serviceMessage.body,
   from: serviceMessage.from,
@@ -100,7 +93,7 @@ const transformMessage = (serviceMessage: ServiceMessage): Message => ({
 
 // Define the shape of the paginated response
 interface ChatPage {
-  chats: ServiceChat[];
+  chats: any;
   pagination: {
     limit: number;
     offset: number;
@@ -110,7 +103,7 @@ interface ChatPage {
 
 // Define the shape of the paginated messages response
 interface MessagesPage {
-  messages: ServiceMessage[];
+  messages: any;
   chatType: string;
   pagination: {
     limit: number;
@@ -125,7 +118,7 @@ export default function AdminChats() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedSession, setSelectedSession] = useState<string>('');
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [selectedChat, setSelectedChat] = useState<any | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -163,17 +156,17 @@ export default function AdminChats() {
   } = useInfiniteQuery<ChatPage, Error>({
     queryKey: QUERY_KEYS.CHATS(selectedSession),
     queryFn: async ({ pageParam }) => {
-      if (!selectedSession) return { 
-        chats: [], 
-        pagination: { limit: 20, offset: 0, hasMore: false } 
+      if (!selectedSession) return {
+        chats: [],
+        pagination: { limit: 20, offset: 0, hasMore: false }
       };
-      
+
       const response = await getChats(selectedSession, 20, pageParam as number);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch chats');
       }
-      
+
       return {
         chats: response.chats || [],
         pagination: {
@@ -193,12 +186,6 @@ export default function AdminChats() {
     refetchOnWindowFocus: false,
   });
 
-  // Flatten the chats from all pages
-  const rawChats = useMemo(() => {
-    if (!chatsData) return [];
-    return chatsData.pages.flatMap(page => page.chats || []);
-  }, [chatsData]);
-
   // React Query for Get messages for the selected chat with infinite scrolling
   const {
     data: messagesData,
@@ -211,30 +198,30 @@ export default function AdminChats() {
   } = useInfiniteQuery<MessagesPage, Error>({
     queryKey: ['messages', selectedSession, selectedChat?.id?._serialized],
     queryFn: async ({ pageParam }) => {
-      if (!selectedSession || !selectedChat) return { 
-        messages: [], 
+      if (!selectedSession || !selectedChat) return {
+        messages: [],
         chatType: 'unknown',
-        pagination: { limit: 20, offset: 0, hasMore: false } 
+        pagination: { limit: 20, offset: 0, hasMore: false }
       };
-      
+
       const response = await getMessages(
-        selectedSession, 
-        selectedChat.id._serialized, // Use serialized ID instead of user ID
+        selectedSession,
+        selectedChat.id._serialized,
         20,
         pageParam as number
       );
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch messages');
       }
-      
+
       return {
         messages: response.messages || [],
         chatType: response.chatType || 'unknown',
-        pagination: response.pagination || { 
-          limit: 20, 
-          offset: pageParam as number, 
-          hasMore: false 
+        pagination: response.pagination || {
+          limit: 20,
+          offset: pageParam as number,
+          hasMore: false
         }
       };
     },
@@ -246,17 +233,9 @@ export default function AdminChats() {
     enabled: !!selectedSession && !!selectedChat,
   });
 
-  // Flatten the messages from all pages
-  const messages = useMemo(() => {
-    if (!messagesData) return [];
-    return messagesData.pages.flatMap(page => 
-      (page.messages || []).map(transformMessage)
-    );
-  }, [messagesData]);
-
   // React Query mutation for sending messages
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: MessageData) => {
+    mutationFn: async (data: SendMessageData) => {
       const response = await sendMessageService(data);
       if (!response.success) {
         throw new Error(response.error || 'Failed to send message');
@@ -275,7 +254,6 @@ export default function AdminChats() {
       });
     },
   });
-
 
   // React Query for assignments
   const {
@@ -297,6 +275,21 @@ export default function AdminChats() {
     refetchOnWindowFocus: false,
   });
 
+  // Flatten the chats from all pages
+  const rawChats = useMemo(() => {
+    if (!chatsData) return [];
+    return chatsData.pages.flatMap(page => page.chats || []);
+  }, [chatsData]);
+
+  // Flatten the messages from all pages
+  const messages = useMemo(() => {
+    if (!messagesData) return [];
+    return messagesData.pages.flatMap(page =>
+      (page.messages || []).map(transformMessage)
+    );
+  }, [messagesData]);
+
+
   // Transform data
   const assignments = assignmentsData || [];
 
@@ -304,18 +297,11 @@ export default function AdminChats() {
   const enhancedChats = useMemo(() => {
     if (rawChats.length === 0) return [];
     // Convert each chat with its assignments
-    return rawChats.map((chat: ServiceChat) => transformChat(chat, assignments));
+    return rawChats.map((chat: any) => transformChat(chat, assignments));
   }, [rawChats, assignments]);
 
-  // Auto-select first session when sessions are loaded
-  useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) {
-      setSelectedSession(sessions[0].id);
-    }
-  }, [sessions, selectedSession]);
-
   // Handle chat selection
-  const handleChatSelect = useCallback((chat: Chat) => {
+  const handleChatSelect = useCallback((chat: any) => {
     setSelectedChat(chat);
   }, []);
 
@@ -391,10 +377,10 @@ export default function AdminChats() {
   // Handle view chat from assignment
   const handleViewChatFromAssignment = (chatId: string) => {
     // Find chat by serialized ID if possible, or fall back to user ID
-    const chat = enhancedChats.find(c => 
-      c.id._serialized 
+    const chat = enhancedChats.find(c =>
+      c.id._serialized
     );
-    
+
     if (chat) {
       setSelectedChat(chat);
       setActiveTab('chats');
@@ -405,10 +391,10 @@ export default function AdminChats() {
 
   const handleManageAssignmentFromView = (chatId: string) => {
     // Find chat by serialized ID if possible, or fall back to user ID
-    const chat = enhancedChats.find(c => 
-      c.id._serialized 
+    const chat = enhancedChats.find(c =>
+      c.id._serialized
     );
-    
+
     if (chat) {
       setSelectedChat(chat);
       handleOpenAssignDialog();
@@ -418,10 +404,17 @@ export default function AdminChats() {
   };
 
   // Handle direct assign from chat list
-  const handleQuickAssign = useCallback((chat: Chat) => {
+  const handleQuickAssign = useCallback((chat: any) => {
     setSelectedChat(chat);
     setIsAssignDialogOpen(true);
   }, []);
+
+  // Auto-select first session when sessions are loaded
+  useEffect(() => {
+    if (sessions.length > 0 && !selectedSession) {
+      setSelectedSession(sessions[0].id);
+    }
+  }, [sessions, selectedSession]);
 
   // Authentication and role checks
   if (status === 'loading' || sessionsLoading) {

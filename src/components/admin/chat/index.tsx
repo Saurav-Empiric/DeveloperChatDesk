@@ -15,44 +15,6 @@ import { NoChatSelectedState } from './ChatStates';
 import { ErrorMessage } from './ChatStates';
 import { LoadingSpinner } from './ChatStates';
 
-// Types
-export interface Chat {
-  id: {
-    server: string;
-    user: string;
-    _serialized: string;
-  };
-  name: string;
-  lastMessage: {
-    text: string;
-    timestamp: number;
-    fromMe: boolean;
-  };
-  unreadCount: number;
-  isGroup: boolean;
-  isAssigned?: boolean;
-  developerId?: string;
-  developers?: Array<{
-    id: string;
-    name: string;
-    email: string;
-    assignmentId?: string;
-  }>;
-  assignedCount?: number;
-}
-
-export interface Message {
-  id: string;
-  body: string;
-  from: string;
-  to: string;
-  timestamp: number;
-  type: string;
-  text: string;
-  fromMe: boolean;
-  isFromMe: boolean;
-}
-
 export {
   ChatHeader,
   ChatItem,

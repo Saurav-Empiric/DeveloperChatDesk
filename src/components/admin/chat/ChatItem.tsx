@@ -5,37 +5,12 @@ import { UserCheck, UserPlus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatTime } from '@/lib/utils';
 
-// Extended Chat type for UI purposes
-interface Chat {
-  id: {
-    server: string;
-    user: string;
-    _serialized: string;
-  };
-  name: string;
-  lastMessage: {
-    text: string;
-    timestamp: number;
-    fromMe: boolean;
-  };
-  unreadCount: number;
-  isGroup: boolean;
-  isAssigned?: boolean;
-  developerId?: string;
-  developers?: Array<{
-    id: string;
-    name: string;
-    email: string;
-    assignmentId?: string;
-  }>;
-  assignedCount?: number;
-}
 
 interface ChatItemProps {
-  chat: Chat;
+  chat: any;
   isSelected: boolean;
-  onSelect: (chat: Chat) => void;
-  onAssign?: (chat: Chat) => void;
+  onSelect: (chat: any) => void;
+  onAssign?: (chat: any) => void;
 }
 
 export const ChatItem = ({ 
@@ -105,7 +80,7 @@ export const ChatItem = ({
                       {chat.developers && chat.developers.length > 0 ? (
                         <div className="text-xs p-1">
                           <p className="font-medium mb-1">Assigned to:</p>
-                          {chat.developers.map(dev => (
+                          {chat?.developers?.map((dev: any) => (
                             <p key={dev.assignmentId || dev.id} className="mb-0.5">{dev.name}</p>
                           ))}
                         </div>
@@ -139,4 +114,4 @@ export const ChatItem = ({
   );
 };
 
-export type { Chat }; 
+// export type { Chat }; 

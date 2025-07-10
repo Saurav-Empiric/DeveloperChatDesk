@@ -1,59 +1,4 @@
 import axios, { AxiosError } from 'axios';
-export interface Chat {
-  id: {
-    server: string;
-    user: string;
-    _serialized: string;
-  };
-  name: string;
-  lastMessage?: {
-    body: string;
-    timestamp: number;
-  };
-  isAssigned?: boolean;
-  developerId?: string;
-}
-
-export interface Message {
-  id: string;
-  body: string;
-  from: string;
-  to: string;
-  timestamp: number;
-  type: string;
-}
-
-export interface MessageData {
-  sessionId: string;
-  chatId: string;
-  text: string;
-}
-
-export interface WhatsAppSession {
-  id: string;
-  name: string;
-  status: string;
-  me?: {
-    id: string;
-    pushName: string;
-  };
-}
-
-export interface WhatsAppResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  chats?: Chat[];
-  messages?: Message[];
-  sessions?: WhatsAppSession[];
-  messageId?: string;
-  pagination?: {
-    limit: number;
-    offset: number;
-    hasMore: boolean;
-  };
-  chatType?: string;
-}
 
 // Use ChatAssignment instead of Assignment for consistency
 export type Assignment = ChatAssignment;
@@ -65,7 +10,7 @@ export const getChats = async (
   sessionId?: string, 
   limit: number = 20, 
   offset: number = 0
-): Promise<WhatsAppResponse> => {
+): Promise<GetChatsResponse> => {
   try {
     let url = '/api/whatsapp/chats';
     const params = new URLSearchParams();
@@ -102,7 +47,7 @@ export const getMessages = async (
   chatId: string,
   limit: number = 20,
   offset: number = 0
-): Promise<WhatsAppResponse> => {
+): Promise<GetMessagesResponse> => {
   try {
     const params = new URLSearchParams();
     params.append('sessionId', sessionId);
@@ -131,7 +76,7 @@ export const getMessages = async (
 /**
  * Send a message
  */
-export const sendMessage = async (data: MessageData): Promise<WhatsAppResponse> => {
+export const sendMessage = async (data: SendMessageData): Promise<SendMessageResponse> => {
   try {
     const response = await axios.post('/api/whatsapp/messages', data);
     return {
@@ -151,7 +96,7 @@ export const sendMessage = async (data: MessageData): Promise<WhatsAppResponse> 
 /**
  * Get all sessions
  */
-export const getSessions = async (): Promise<WhatsAppResponse> => {
+export const getSessions = async (): Promise<GetSessionsResponse> => {
   try {
     const response = await axios.get('/api/whatsapp/sessions');
     return {
@@ -170,7 +115,7 @@ export const getSessions = async (): Promise<WhatsAppResponse> => {
 /**
  * Sync WhatsApp sessions
  */
-export const syncSessions = async (): Promise<WhatsAppResponse> => {
+export const syncSessions = async (): Promise<SyncSessionsResponse> => {
   try {
     const response = await axios.post('/api/whatsapp/sync-sessions');
     return {
