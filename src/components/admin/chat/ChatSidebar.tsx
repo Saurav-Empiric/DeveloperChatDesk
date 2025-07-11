@@ -128,7 +128,7 @@ export const ChatSidebar = ({
             }
           </div>
         ) : (
-          <>
+          <div className='w-full'>
             {filteredChats.map((chat: any) => (
               <ChatItem
                 key={chat.id.user}
@@ -163,7 +163,7 @@ export const ChatSidebar = ({
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </ScrollArea>
     </div>
