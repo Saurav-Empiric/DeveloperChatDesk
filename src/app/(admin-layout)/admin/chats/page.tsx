@@ -440,8 +440,8 @@ export default function AdminChats() {
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="chats">Chats</TabsTrigger>
-              <TabsTrigger value="assignments">Assignments</TabsTrigger>
+              <TabsTrigger value="chats" className='cursor-pointer'>Chats</TabsTrigger>
+              <TabsTrigger value="assignments" className='cursor-pointer'>Assignments</TabsTrigger>
             </TabsList>
 
             <TabsContent value="chats" className="mt-0">

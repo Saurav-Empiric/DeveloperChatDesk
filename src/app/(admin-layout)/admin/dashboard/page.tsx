@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                   <Button variant="outline" onClick={handleRefreshStatus}>
                     Refresh Status
                   </Button>
-                  <Button onClick={() => window.open(process.env.NEXT_PUBLIC_WAHA_URL, '_blank')}>
+                  <Button className='cursor-pointer' onClick={() => window.open(process.env.NEXT_PUBLIC_WAHA_URL, '_blank')}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Open WAHA Dashboard
                   </Button>
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
               <Button
                 onClick={() => router.push('/admin/chats')}
                 disabled={!wahaStatus.isRunning || sessions.length === 0}
-                className="w-full"
+                className="w-full cursor-pointer"
               >
                 View Chats
               </Button>
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
               </p>
               <Button
                 onClick={() => router.push('/admin/developers')}
-                className="w-full"
+                className="w-full cursor-pointer"
               >
                 Manage Developers
               </Button>

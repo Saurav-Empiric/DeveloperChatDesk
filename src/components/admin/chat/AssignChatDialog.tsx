@@ -215,7 +215,7 @@ export const AssignChatDialog = ({
                             size="sm"
                             onClick={() => handleUnassignDeveloper(developer?.id || '')}
                             disabled={isSubmitting}
-                            className="flex-shrink-0 h-7 w-7 p-0 sm:h-8 sm:w-8"
+                            className="flex-shrink-0 h-7 w-7 p-0 sm:h-8 sm:w-8 cursor-pointer"
                           >
                             <X className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
                           </Button>
@@ -262,7 +262,7 @@ export const AssignChatDialog = ({
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto cursor-pointer"
           >
             Close
           </Button>
@@ -273,7 +273,7 @@ export const AssignChatDialog = ({
                 variant="destructive"
                 onClick={handleUnassignAll}
                 disabled={isSubmitting || isLoading}
-                className="w-full sm:w-auto text-sm"
+                className="w-full sm:w-auto text-sm cursor-pointer"
               >
                 {unassignMutation.isPending && (
                   <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -285,7 +285,7 @@ export const AssignChatDialog = ({
                 variant="default"
                 onClick={handleAssign}
                 disabled={!selectedDeveloperId || isSubmitting || isLoading || availableDevelopers.length === 0}
-                className="w-full sm:w-auto text-sm"
+                className="w-full sm:w-auto text-sm cursor-pointer"
               >
                 {assignMutation.isPending ? (
                   <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -299,7 +299,7 @@ export const AssignChatDialog = ({
             <Button
               onClick={handleAssign}
               disabled={!selectedDeveloperId || isSubmitting || isLoading}
-              className="w-full sm:w-auto text-sm"
+              className="w-full sm:w-auto text-sm cursor-pointer"
             >
               {assignMutation.isPending ? (
                 <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />

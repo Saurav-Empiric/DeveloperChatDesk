@@ -93,7 +93,7 @@ export const ChatSidebar = ({
             variant={filterAssigned ? "default" : "outline"}
             size="sm"
             onClick={() => setFilterAssigned(!filterAssigned)}
-            className="h-8 text-xs gap-1"
+            className="h-8 text-xs gap-1 cursor-pointer"
           >
             <Users className="h-3.5 w-3.5" />
             {filterAssigned ? 'Showing Assigned' : 'Show Assigned'}

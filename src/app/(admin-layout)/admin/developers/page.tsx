@@ -159,7 +159,7 @@ export default function DevelopersPage() {
 
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogTrigger asChild>
-              <Button>Add Developer</Button>
+              <Button className='cursor-pointer'>Add Developer</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -212,14 +212,16 @@ export default function DevelopersPage() {
                   variant="outline"
                   onClick={() => setOpenAddDialog(false)}
                   disabled={addDeveloperMutation.isPending}
+                  className='cursor-pointer'
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAddDeveloper}
                   disabled={addDeveloperMutation.isPending}
+                  className='cursor-pointer'
                 >
-                  {addDeveloperMutation.isPending ? 'Adding...' : 'Add Developer'}
+                  {addDeveloperMutation.isPending ? 'Adding...' : 'Add Developer1'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -255,6 +257,7 @@ export default function DevelopersPage() {
                           variant="destructive"
                           size="sm"
                           onClick={() => setSelectedDeveloper(developer)}
+                          className='cursor-pointer'
                         >
                           Delete
                         </Button>

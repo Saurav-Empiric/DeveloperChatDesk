@@ -29,7 +29,7 @@ export const SessionSelector = ({
         </SelectTrigger>
         <SelectContent>
           {sessions.map((session: WhatsAppSession) => (
-            <SelectItem key={session.id} value={session.id}>
+            <SelectItem key={session.id} value={session.id} className='cursor-pointer'>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 <span>{session.me?.pushName ?? session.name}</span>
@@ -48,6 +48,7 @@ export const SessionSelector = ({
           size="sm" 
           onClick={onRefreshSessions}
           disabled={isLoading}
+          className='cursor-pointer'
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh

@@ -53,7 +53,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onViewChat(chatAssignment.chatId)}
-                            className="text-blue-600 hover:text-blue-700"
+                            className="text-blue-600 hover:text-blue-700 cursor-pointer"
                         >
                             <MessageSquare className="h-4 w-4 mr-1" />
                             View Chat
@@ -62,7 +62,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onManageAssignment(chatAssignment.chatId)}
-                            className="text-green-600 hover:text-green-700"
+                            className="text-green-600 hover:text-green-700 cursor-pointer"
                         >
                             <UserPlus className="h-4 w-4 mr-1" />
                             Manage
@@ -112,7 +112,7 @@ const DeveloperRow: React.FC<DeveloperRowProps> = ({ developer, onUnassign }) =>
                     variant="ghost"
                     size="sm"
                     onClick={onUnassign}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700 h-8 w-8 p-0"
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700 h-8 w-8 p-0 cursor-pointer"
                     title={`Unassign ${developer.name}`}
                 >
                     <X className="h-4 w-4" />
@@ -190,7 +190,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                     <h3 className="text-lg font-medium mb-2">No Assignments Yet</h3>
                     <p className="mb-4">No chats are currently assigned to developers.</p>
-                    <Button onClick={onGoToChats} variant="outline">
+                    <Button onClick={onGoToChats} variant="outline" className='cursor-pointer'>
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Go to Chats to Assign Conversations
                     </Button>
