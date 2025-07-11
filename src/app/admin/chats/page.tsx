@@ -271,9 +271,11 @@ export default function AdminChats() {
   // Flatten the messages from all pages
   const messages = useMemo(() => {
     if (!messagesData) return [];
-    return messagesData.pages.flatMap(page =>
-      (page.messages || [])
-    );
+    // Get all messages from all pages
+    const allMessages = messagesData.pages.flatMap(page => page.messages || []);
+    
+    // messages are sorted by timestamp, with oldest first (latest at bottom)
+    return allMessages.sort((a, b) => a.timestamp - b.timestamp);
   }, [messagesData]);
 
   // Transform data

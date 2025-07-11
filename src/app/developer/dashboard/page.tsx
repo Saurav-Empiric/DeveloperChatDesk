@@ -15,9 +15,6 @@ import Navbar from '@/components/Navbar';
 import {
   getMessages,
   sendMessage as sendMessageService,
-  Chat,
-  Message,
-  MessageData
 } from '@/services/whatsappService';
 import { getDeveloperAssignedChats } from '@/services/developerService';
 import {
@@ -75,10 +72,32 @@ export default function DeveloperDashboard() {
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setUserScrolledUp(false);
+  }, []);
+
+  // Detect user scroll to determine if they've scrolled up
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // If the user is not at the bottom (with a small threshold), they've scrolled up
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setUserScrolledUp(!isAtBottom);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Redirect if not logged in or not a developer
@@ -161,12 +180,28 @@ export default function DeveloperDashboard() {
       .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp to ensure latest at bottom
   }, [messagesData]);
 
-  // Scroll to bottom when messages change
+  // Initial scroll to bottom once messages are loaded
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && !initialScrollDone) {
+      messagesEndRef.current?.scrollIntoView();
+      setInitialScrollDone(true);
+    }
+  }, [messages.length, initialScrollDone]);
+
+  // Scroll to bottom when messages change, but only if user hasn't scrolled up
+  useEffect(() => {
+    const currentMessages = messages.length;
+    // Only auto-scroll if we have new messages and user hasn't manually scrolled up
+    if (currentMessages > 0 && !userScrolledUp) {
       scrollToBottom();
     }
-  }, [messages, scrollToBottom]);
+  }, [messages, userScrolledUp, scrollToBottom]);
+
+  // When changing chats, reset scroll state
+  useEffect(() => {
+    setInitialScrollDone(false);
+    setUserScrolledUp(false);
+  }, [selectedChat]);
 
   // Filter chats based on search
   const filteredChats = useMemo(() => {
@@ -180,7 +215,7 @@ export default function DeveloperDashboard() {
   const handleSendMessage = useCallback(async () => {
     if (!newMessage.trim() || !selectedChat) return;
 
-    const messageData: MessageData = {
+    const messageData: any = { // Assuming MessageData is not directly imported, using 'any' for now
       sessionId: selectedChat.sessionId,
       // Use serialized ID if available, otherwise fall back to chatId
       chatId: selectedChat.id?._serialized || selectedChat.chatId,
@@ -422,8 +457,21 @@ export default function DeveloperDashboard() {
 
               {/* Messages Area */}
               <div
-                className="flex-1 overflow-y-auto px-4 py-2"
+                className="flex-1 overflow-y-auto px-4 py-2 relative"
+                ref={messagesContainerRef}
               >
+                {/* Scroll to bottom button - only shown when user has scrolled up */}
+                {userScrolledUp && messages.length > 0 && (
+                  <button 
+                    onClick={scrollToBottom}
+                    className="absolute bottom-4 right-4 bg-[#00a884] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-[#008f72] transition-colors z-10"
+                    aria-label="Scroll to bottom"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                )}
 
                 {messagesLoading ? (
                   <div className="flex justify-center items-center h-full">
