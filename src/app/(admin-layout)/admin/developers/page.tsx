@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import Navbar from '@/components/Navbar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -153,7 +152,6 @@ export default function DevelopersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
 
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">

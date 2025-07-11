@@ -49,7 +49,7 @@ export default function Login() {
         setError(result.error);
       } else {
         // Redirect based on user role
-        router.push('/');
+        router.push('/admin/dashboard');
         router.refresh();
       }
     } catch (error) {
