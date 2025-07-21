@@ -1,46 +1,34 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import Navbar from '@/components/Navbar';
+import { getDeveloperAssignedChats } from '@/services/developerService';
 import {
   getMessages,
   sendMessage as sendMessageService,
 } from '@/services/whatsappService';
-import { getDeveloperAssignedChats } from '@/services/developerService';
 import {
-  MessageSquare,
-  Send,
+  CheckCheck,
   Loader2,
-  RefreshCw,
-  User,
-  Users,
-  Clock,
-  Search,
+  MessageSquare,
   MoreVertical,
   Paperclip,
-  Smile,
   Phone,
-  Video,
-  Check,
-  CheckCheck
+  RefreshCw,
+  Search,
+  Send,
+  Smile,
+  Users,
+  Video
 } from 'lucide-react';
-
-interface UIMessage {
-  id: string;
-  body: string;
-  timestamp: number;
-  fromMe: boolean;
-}
 
 interface AssignedChat {
   // Assignment details
@@ -284,7 +272,6 @@ export default function DeveloperDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
-      <Navbar />
 
       <div className="h-[calc(100vh-64px)] flex">
         {/* Chat List Sidebar */}
