@@ -3,7 +3,6 @@ import { ChatHeader } from './ChatHeader';
 import { ChatItem } from './ChatItem';
 import { ChatSidebar } from './ChatSidebar';
 import { MessageBubble } from './MessageBubble';
-import { MessageInput } from './MessageInput';
 import { MessagesArea } from './MessagesArea';
 import { SessionSelector } from './SessionSelector';
 import { AssignChatDialog } from './AssignChatDialog';
@@ -20,7 +19,6 @@ export {
   ChatItem,
   ChatSidebar,
   MessageBubble,
-  MessageInput,
   MessagesArea,
   SessionSelector,
   AssignChatDialog,

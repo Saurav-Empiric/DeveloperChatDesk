@@ -19,7 +19,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
+import { MessageInput } from '@/components/chats/MessageInput';
 // Import chat components
 import {
   AssignChatDialog,
@@ -27,7 +27,6 @@ import {
   ChatHeader,
   ChatSidebar,
   LoadingSpinner,
-  MessageInput,
   MessagesArea,
   NoChatSelectedState,
   NoSessionsState,

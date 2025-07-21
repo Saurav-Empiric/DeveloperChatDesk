@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2, UserCheck } from 'lucide-react';
 import { getWahaStatus, WahaStatus } from '@/services/systemService';
-import { getSessions, syncSessions, WhatsAppSession } from '@/services/whatsappService';
+import { getSessions, syncSessions } from '@/services/whatsappService';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
     message: 'Service status unavailable'
   };
 
-  const sessions: WhatsAppSession[] = sessionsData?.sessions || [];
+  const sessions: any = sessionsData?.sessions || [];
 
   // React Query mutation for syncing sessions
   const syncSessionsMutation = useMutation({
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {sessions.map((session: WhatsAppSession) => (
+                  {sessions.map((session: any) => (
                     <div key={session.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
