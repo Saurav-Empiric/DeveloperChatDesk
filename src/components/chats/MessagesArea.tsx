@@ -2,7 +2,16 @@ import { formatTime } from "@/lib/utils";
 import { CheckCheck, Loader2, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const MessagesArea = ({ messages, messagesLoading }: { messages: any, messagesLoading: boolean }) => {
+interface MessagesAreaProps {
+    messages: any;
+    messagesLoading: boolean;
+    hasMore?: boolean;
+    isFetchingMore?: boolean;
+    loadMore?: () => void;
+}
+export const MessagesArea = ({ messages, messagesLoading, hasMore = false,
+    isFetchingMore = false,
+    loadMore, }: MessagesAreaProps) => {
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,6 +41,28 @@ export const MessagesArea = ({ messages, messagesLoading }: { messages: any, mes
         }
     }, [messages.length, initialScrollDone]);
 
+    // Setup intersection observer for infinite scrolling (load older messages)
+    useEffect(() => {
+        if (!hasMore || !loadMore) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (messagesContainerRef.current) {
+            observer.observe(messagesContainerRef.current);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [hasMore, isFetchingMore, loadMore]);
+
     // Detect user scroll to determine if they've scrolled up
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -55,11 +86,18 @@ export const MessagesArea = ({ messages, messagesLoading }: { messages: any, mes
             className="flex-1 overflow-y-auto px-4 py-2 relative"
             ref={messagesContainerRef}
         >
+            {/* Loader for infinite scroll at the top */}
+            {hasMore && isFetchingMore && (
+                <div className="flex justify-center items-center py-2">
+                    <Loader2 className="animate-spin h-5 w-5 text-green-500 mr-2" />
+                    <span className="text-sm text-gray-500">Loading messages...</span>
+                </div>
+            )}
             {/* Scroll to bottom button - only shown when user has scrolled up */}
             {userScrolledUp && messages.length > 0 && (
                 <button
                     onClick={scrollToBottom}
-                    className="absolute bottom-4 right-4 bg-[#00a884] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-[#008f72] transition-colors z-10"
+                    className="fixed bottom-40 right-4 bg-[#00a884] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-[#008f72] transition-colors z-10"
                     aria-label="Scroll to bottom"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,7 +108,7 @@ export const MessagesArea = ({ messages, messagesLoading }: { messages: any, mes
 
             {messagesLoading ? (
                 <div className="flex justify-center items-center h-full">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#00a884]" />
+                    <Loader2 className="animate-spin h-8 w-8 text-green-500" />
                 </div>
             ) : messages.length === 0 ? (
                 <div className="text-center text-[#8696a0] mt-8">

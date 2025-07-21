@@ -9,7 +9,7 @@ import {
   getMessages,
   sendMessage as sendMessageService,
 } from '@/services/whatsappService';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import {
   Loader2,
   MessageSquare
@@ -49,22 +49,50 @@ export default function DeveloperDashboard() {
   const {
     data: messagesData,
     isLoading: messagesLoading,
+    fetchNextPage: fetchNextMessages,
+    hasNextPage: hasMoreMessages,
+    isFetchingNextPage: isFetchingNextMessages,
     refetch: refetchMessages
-  } = useQuery({
+  } = useInfiniteQuery({
     queryKey: ['messages', selectedChat?.sessionId, selectedChat?.id?._serialized],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       if (!selectedChat) return { messages: [] };
-      // Use serialized ID if available, otherwise fall back to chatId
-      const chatId = selectedChat.id?._serialized || selectedChat.chatId;
-      const response = await getMessages(selectedChat.sessionId, chatId);
+      const response = await getMessages(selectedChat.sessionId, selectedChat.id?._serialized, 20, pageParam);
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch messages');
       }
-      return response;
+      return {
+        messages: response.messages || [],
+        pagination: response.pagination || { limit: 20, offset: pageParam, hasMore: false }
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination?.hasMore) return undefined;
+      return lastPage.pagination.offset + lastPage.pagination.limit;
     },
     enabled: !!selectedChat,
     refetchInterval: 5000,
   });
+
+  // Flatten and transform messages for UI
+  const messages = useMemo(() => {
+    if (!messagesData) return [];
+    return (messagesData.pages as any[])
+      .flatMap((page: any) => page.messages || [])
+      .map((message: any) => ({
+        id: message.id,
+        body: message.body,
+        timestamp: message.timestamp,
+        fromMe: message.fromMe === true || message.from === 'me',
+        from: message.from || '',
+        to: message.to || '',
+        type: message.type || 'chat',
+        text: message.body || '',
+        isFromMe: message.fromMe === true || message.from === 'me'
+      }))
+      .sort((a: { timestamp: number }, b: { timestamp: number }) => a.timestamp - b.timestamp);
+  }, [messagesData]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -78,24 +106,6 @@ export default function DeveloperDashboard() {
       toast.error(error.message || 'Failed to send message');
     }
   });
-
-  // Transform messages for UI
-  const messages = useMemo(() => {
-    if (!messagesData?.messages) return [];
-    return messagesData.messages
-      .map((message: any) => ({
-        id: message.id,
-        body: message.body,
-        timestamp: message.timestamp,
-        fromMe: message.fromMe === true || message.from === 'me',
-        from: message.from || '',
-        to: message.to || '',
-        type: message.type || 'chat',
-        text: message.body || '',
-        isFromMe: message.fromMe === true || message.from === 'me'
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp to ensure latest at bottom
-  }, [messagesData]);
 
   // Filter chats based on search
   const filteredChats = useMemo(() => {
@@ -181,6 +191,9 @@ export default function DeveloperDashboard() {
               <MessagesArea
                 messages={messages}
                 messagesLoading={messagesLoading}
+                hasMore={hasMoreMessages}
+                isFetchingMore={isFetchingNextMessages}
+                loadMore={fetchNextMessages}
               />
 
               {/* Message Input */}

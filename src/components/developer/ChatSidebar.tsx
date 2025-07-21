@@ -7,6 +7,7 @@ import { Loader2, MessageSquare, MoreVertical, RefreshCw, Search, Users } from "
 import { Input } from "../ui/input";
 import { useCallback } from "react";
 import { Session } from "next-auth";
+import { formatTime } from "@/lib/utils";
 
 interface DeveloperChatSidebarProps {
     session: Session | null;
@@ -20,28 +21,14 @@ interface DeveloperChatSidebarProps {
 }
 
 export const DeveloperChatSidebar = ({ session, searchQuery, setSearchQuery, selectedChat, setSelectedChat, chatsLoading, filteredChats, handleRefresh }: DeveloperChatSidebarProps) => {
-    // Format chat time for sidebar
-    const formatChatTime = useCallback((timestamp: number) => {
-        const date = new Date(timestamp * 1000);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
 
-        if (date.toDateString() === today.toDateString()) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } else if (date.toDateString() === yesterday.toDateString()) {
-            return 'Yesterday';
-        } else {
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        }
-    }, []);
     return (
         <div className="w-full md:max-w-[400px] bg-white border-r border-[#e9edef] flex flex-col">
             {/* Header */}
             <div className="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 border-b border-[#e9edef]">
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-[#00a884] text-white">
+                    <Avatar className="h-10 w-10 rounded-full bg-[#00a884] text-white text-lg flex items-center justify-center">
+                        <AvatarFallback className="">
                             {session?.user?.name?.charAt(0).toUpperCase() || 'D'}
                         </AvatarFallback>
                     </Avatar>
@@ -112,7 +99,7 @@ export const DeveloperChatSidebar = ({ session, searchQuery, setSearchQuery, sel
                                         </AvatarFallback>
                                     </Avatar>
                                     {!chat.isActive && (
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+                                        <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
                                     )}
                                 </div>
 
@@ -124,7 +111,7 @@ export const DeveloperChatSidebar = ({ session, searchQuery, setSearchQuery, sel
                                         </div>
                                         {chat.lastMessage && (
                                             <span className="text-xs text-[#8696a0]">
-                                                {formatChatTime(chat.lastMessage.timestamp)}
+                                                {formatTime(chat.lastMessage.timestamp)}
                                             </span>
                                         )}
                                     </div>
