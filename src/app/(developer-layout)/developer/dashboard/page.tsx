@@ -72,7 +72,6 @@ export default function DeveloperDashboard() {
       return lastPage.pagination.offset + lastPage.pagination.limit;
     },
     enabled: !!selectedChat,
-    refetchInterval: 5000,
   });
 
   // Flatten and transform messages for UI

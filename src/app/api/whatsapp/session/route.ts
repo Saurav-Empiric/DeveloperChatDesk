@@ -34,17 +34,10 @@ export async function POST(req: NextRequest) {
     
     // Start the WAHA session
     await wahaApi.startSession(sessionId);
-    
-    // Store the session in the database
-    await WhatsAppSession.findOneAndUpdate(
-      { sessionId },
-      {
-        userId: session.user.id,
-        isActive: false, // Will be updated when the session is connected
-      },
-      { upsert: true, new: true }
-    );
-    
+
+    // Remove direct DB update for WhatsAppSession
+    // await WhatsAppSession.findOneAndUpdate(...)
+
     return NextResponse.json({ success: true, sessionId });
   } catch (error) {
     console.error('Error starting WhatsApp session:', error);

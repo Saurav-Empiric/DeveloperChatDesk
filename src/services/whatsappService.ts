@@ -105,8 +105,7 @@ export const getSessions = async (): Promise<GetSessionsResponse> => {
     };
   } catch (error) {
     const axiosError = error as AxiosError<any>;
-    const errorMessage = axiosError.response?.data?.error ||
-      'Failed to fetch WhatsApp sessions';
+    const errorMessage = axiosError.response?.data?.error || 'Failed to fetch WhatsApp sessions';
     console.error('Error fetching sessions:', error);
     return { success: false, error: errorMessage };
   }

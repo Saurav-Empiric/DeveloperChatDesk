@@ -4,6 +4,7 @@ export interface IWhatsAppSession extends Document {
   sessionId: string;
   userId: mongoose.Types.ObjectId;
   isActive: boolean;
+  status: string; // Add this line
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,10 @@ const WhatsAppSessionSchema = new Schema<IWhatsAppSession>(
     isActive: {
       type: Boolean,
       default: false,
+    },
+    status: {
+      type: String,
+      default: 'STOPPED',
     },
   },
   {

@@ -51,7 +51,8 @@ export default withAuth(
           '/register',
           '/developer/login',
           '/api/auth',
-          '/api/auth/registration-status'
+          '/api/auth/registration-status',
+          '/api/webhooks/waha/session-events'
         ];
         
         // Allow access to public routes

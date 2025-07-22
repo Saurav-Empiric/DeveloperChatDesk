@@ -26,28 +26,13 @@ export async function GET(req: NextRequest) {
 
     // Find the session in the database
     let whatsappSession = await WhatsAppSession.findOne({ sessionId });
-
-    // If session not found in DB but user is admin, check if it exists in WAHA
-    if (!whatsappSession && session.user.role === 'admin') {
-      try {
-        // Check if session exists in WAHA
-        const wahaSessionResponse = await wahaApi.getSessionStatus(sessionId);
-        if (wahaSessionResponse.data.status === 'WORKING' || wahaSessionResponse.data.status === 'CONNECTED') {
-          // Create the session in MongoDB
-          whatsappSession = await WhatsAppSession.create({
-            sessionId,
-            userId: session.user.id,
-            isActive: true,
-          });
-        }
-      } catch (error) {
-        // Session doesn't exist in WAHA either
-        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-      }
-    }
-
+    // Remove logic that creates WhatsAppSession if not found
     if (!whatsappSession) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+    // Optionally, check if session is active
+    if (!whatsappSession.isActive || whatsappSession.status !== 'WORKING') {
+      return NextResponse.json({ error: 'Session is not active' }, { status: 403 });
     }
 
     // Check if the user is authorized to access this session

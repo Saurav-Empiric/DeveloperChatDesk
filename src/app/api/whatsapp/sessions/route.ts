@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/authOptions';
 import { wahaApi } from '@/lib/waha/api';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import { connectToDatabase } from '@/lib/db/mongodb';
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,21 +17,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get all sessions from WAHA
-    const response = await wahaApi.getSessions();
+    // Connect to the database
+    await connectToDatabase();
 
-    // Filter sessions that are running/connected
-    const sessions = response.data.filter((session: any) =>
-      session.status === 'WORKING' || session.status === 'CONNECTED' || session.status === 'STARTING'
-    );
+    // Fetch WhatsApp sessions for this admin from MongoDB
+    const dbSessions = await WhatsAppSession.find({ userId: session.user.id });
     return NextResponse.json({
       success: true,
-      sessions: sessions.map((session: any) => ({
-        id: session.name,
-        name: session.name,
-        status: session.status,
-        config: session.config,
-        me: session.me // Contains phone number and name info
+      sessions: dbSessions.map((s: any) => ({
+        id: s.sessionId,
+        name: s.sessionId,
+        status: s.status,
+        isActive: s.isActive,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
       }))
     });
   } catch (error) {
