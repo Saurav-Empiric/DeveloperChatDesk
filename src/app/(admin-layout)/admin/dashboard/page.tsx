@@ -1,131 +1,52 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAdminSessionsAndWahaStatus } from '@/hooks/useAdminSessionsAndWahaStatus';
+import { WahaStatus } from '@/services/systemService';
+import { CheckCircle, ExternalLink, Loader2, MessageSquare, RefreshCw, Settings, Users, XCircle } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Users, Settings, ExternalLink, CheckCircle, XCircle, RefreshCw, Loader2, UserCheck } from 'lucide-react';
-import { getWahaStatus, WahaStatus } from '@/services/systemService';
-import { getSessions, syncSessions } from '@/services/whatsappService';
-
 export default function AdminDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const { data, status } = useAdminSessionsAndWahaStatus();
 
-  // React Query for checking WAHA status
-  const {
-    data: wahaStatusData,
-    isLoading: wahaStatusLoading,
-    error: wahaError,
-    refetch: refetchWahaStatus
-  } = useQuery({
-    queryKey: ['wahaStatus'],
-    queryFn: async () => {
-      const response = await getWahaStatus();
-      if (!response.success) {
-        throw new Error(response.error);
-      }
-      return response.wahaStatus;
-    },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin',
-  });
+  if (data.isLoading || status === 'loading') {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" /></div>;
+  }
 
-  // React Query for fetching WhatsApp sessions
-  const {
-    data: sessionsData,
-    isLoading: sessionsLoading,
-    error: sessionsError,
-    refetch: refetchSessions
-  } = useQuery({
-    queryKey: ['whatsappSessions'],
-    queryFn: async () => {
-      const response = await getSessions();
-      if (!response.success) {
-        throw new Error(response.error);
-      }
-      return response;
-    },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin',
-  });
-
-  const wahaStatus: WahaStatus = wahaStatusData || {
+  const wahaStatus: WahaStatus = data.wahaStatus || {
     isRunning: false,
     status: 'error',
     message: 'Service status unavailable'
   };
 
-  const sessions: any = sessionsData?.sessions || [];
-
-  // React Query mutation for syncing sessions
-  const syncSessionsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await syncSessions();
-      if (!response.success) {
-        throw new Error(response.error);
-      }
-      return response;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['whatsappSessions'] });
-      toast.success(data.message || 'Sessions synced successfully');
-    },
-    onError: (error: Error) => {
-      console.error('Error syncing sessions:', error);
-      toast.error(error.message || 'Failed to sync WhatsApp sessions');
-    }
-  });
+  const sessions: any = data.sessions || [];
+  const syncSessionsMutation = data.syncSessionsMutation;
 
   const syncAndFetchSessions = async () => {
-    setError(null);
     if (wahaStatus.isRunning) {
       await syncSessionsMutation.mutateAsync();
-      await refetchSessions();
+      await data.refetchSessions();
     } else {
       toast.error('WAHA service is not running. Please start it first.');
     }
   };
 
   const handleRefreshStatus = () => {
-    setError(null);
-    refetchWahaStatus();
+    data.refetchWahaStatus();
   };
 
-  useEffect(() => {
-    // Redirect if not logged in or not an admin
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && session?.user?.role !== 'admin') {
-      router.push('/developer/dashboard');
+  // Error state from shared hook
+  if (data.error) {
+    let errorMsg = '';
+    if (typeof data.error === 'object' && data.error !== null && 'message' in data.error) {
+      errorMsg = (data.error as { message: string }).message;
+    } else {
+      errorMsg = String(data.error);
     }
-  }, [status, session, router]);
-
-  // Update error state when there's an error from queries
-  useEffect(() => {
-    if (wahaError) {
-      const errorMessage = wahaError instanceof Error ? wahaError.message : 'Failed to check WAHA status';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    }
-  }, [wahaError]);
-
-  // Update error state when there's a sessions error
-  useEffect(() => {
-    if (sessionsError) {
-      const errorMessage = sessionsError instanceof Error ? sessionsError.message : 'Failed to fetch WhatsApp sessions';
-      console.error('Error fetching WhatsApp sessions:', errorMessage);
-    }
-  }, [sessionsError]);
-
-
-  if (status === 'loading') {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-10 h-10 md:w-16 md:h-16" /></div>;
+    return <div className="text-center py-8 text-red-500">{errorMsg}</div>;
   }
 
   return (
@@ -194,9 +115,9 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {error && (
+              {data.error && (
                 <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-md">
-                  {error}
+                  {typeof data.error === 'object' && data.error !== null && 'message' in data.error ? (data.error as { message: string }).message : String(data.error)}
                 </div>
               )}
 
@@ -229,7 +150,7 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {sessions.map((session: any) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                    <div key={session.id} className="flex items-center justify-between p-3 bg-gray-300 rounded-md">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
                           <MessageSquare className="h-5 w-5 text-green-600" />
@@ -238,7 +159,7 @@ export default function AdminDashboard() {
                           {session.me &&
                             <p className="font-medium">{session.me?.pushName}</p>
                           }
-                          <p className="text-sm text-gray-600">Session: {session.name}</p>
+                          <p className="text-sm text-black font-semibold">Session: {session.name}</p>
                         </div>
                       </div>
                       <Badge variant={session.status === 'WORKING' ? 'default' : 'secondary'}>
@@ -265,13 +186,12 @@ export default function AdminDashboard() {
               <p className="text-gray-600 mb-4">
                 View and manage WhatsApp conversations from connected accounts
               </p>
-              <Button
-                onClick={() => router.push('/admin/chats')}
-                disabled={!wahaStatus.isRunning || sessions.length === 0}
-                className="w-full cursor-pointer"
+              <Link
+                href="/admin/chats"
+                className="w-full cursor-pointer bg-black text-white px-2 md:px-4 py-2 rounded-md hover:bg-gray-800"
               >
                 View Chats
-              </Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -286,12 +206,12 @@ export default function AdminDashboard() {
               <p className="text-gray-600 mb-4">
                 Manage developer accounts who can access assigned chats
               </p>
-              <Button
-                onClick={() => router.push('/admin/developers')}
-                className="w-full cursor-pointer"
+              <Link
+                href="/admin/developers"
+                className="w-full cursor-pointer bg-black text-white px-2 md:px-4 py-2 rounded-md hover:bg-gray-800"
               >
                 Manage Developers
-              </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>

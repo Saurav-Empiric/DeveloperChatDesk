@@ -33,6 +33,8 @@ import {
   SessionSelector,
 } from '@/components/admin/chat';
 import { QUERY_KEYS } from '@/lib/constants';
+// 1. Create a shared hook for sessions and WAHA status
+import { useAdminSessionsAndWahaStatus } from '@/hooks/useAdminSessionsAndWahaStatus';
 
 // Extend the Chat type to include multiple developers
 type ExtendedChat = any & {
@@ -98,8 +100,9 @@ interface MessagesPage {
 }
 
 export default function AdminChats() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data, status, router } = useAdminSessionsAndWahaStatus();
+  // data: { wahaStatus, sessions, error, isLoading, refetchSessions, refetchWahaStatus, syncSessionsMutation }
+
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedSession, setSelectedSession] = useState<string>('');
@@ -110,26 +113,7 @@ export default function AdminChats() {
   // State for the assign chat dialog
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
-  // React Query for WhatsApp sessions
-  const {
-    data: sessions = [],
-    isLoading: sessionsLoading,
-    error: sessionsError,
-    refetch: refetchSessions
-  } = useQuery({
-    queryKey: QUERY_KEYS.SESSIONS,
-    queryFn: async () => {
-      const response = await getSessions();
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch sessions');
-      }
-      return response.sessions || [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  // React Query for WhatsApp chats with infinite scrolling
+  // React Query for chats with infinite scrolling
   const {
     data: chatsData,
     isLoading: chatsLoading,
@@ -255,7 +239,7 @@ export default function AdminChats() {
       }
       return response.assignments || [];
     },
-    enabled: status === 'authenticated' && session?.user?.role === 'admin' && !!selectedSession,
+    enabled: status === 'authenticated' && data?.sessions?.length > 0 && data.sessions[0]?.id === selectedSession,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false,
   });
@@ -395,15 +379,8 @@ export default function AdminChats() {
     setIsAssignDialogOpen(true);
   }, []);
 
-  // Auto-select first session when sessions are loaded
-  useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) {
-      setSelectedSession(sessions[0].id);
-    }
-  }, [sessions, selectedSession]);
-
   // Authentication and role checks
-  if (status === 'loading' || sessionsLoading) {
+  if (data?.isLoading) {
     return <LoadingSpinner />;
   }
 
@@ -412,9 +389,18 @@ export default function AdminChats() {
     return null;
   }
 
-  if (session?.user?.role !== 'admin') {
-    router.push('/developer/dashboard');
-    return null;
+  if (data?.sessions?.length === 0 && !data?.isLoading) {
+    return <NoSessionsState />;
+  }
+
+  if (data?.error) {
+    let errorMsg = '';
+    if (typeof data.error === 'object' && data.error !== null && 'message' in data.error) {
+      errorMsg = (data.error as { message: string }).message;
+    } else {
+      errorMsg = String(data.error);
+    }
+    return <div className="text-center py-8 text-red-500">{errorMsg}</div>;
   }
 
   return (
@@ -426,15 +412,15 @@ export default function AdminChats() {
         {/* Session selector */}
         <div className="mb-6">
           <SessionSelector
-            sessions={sessions}
+            sessions={data?.sessions || []}
             selectedSession={selectedSession}
             onSessionChange={setSelectedSession}
-            isLoading={sessionsLoading}
-            onRefreshSessions={refetchSessions}
+            isLoading={data?.isLoading}
+            onRefreshSessions={data?.refetchSessions}
           />
         </div>
 
-        {sessions.length === 0 && !sessionsLoading ? (
+        {data?.sessions?.length === 0 && !data?.isLoading ? (
           <NoSessionsState />
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

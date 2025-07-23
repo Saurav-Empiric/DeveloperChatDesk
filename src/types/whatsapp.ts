@@ -206,6 +206,7 @@ declare global {
         id: string;
         pushName: string;
       };
+      isActive: boolean;
     }[];
     error?: string;
   }
