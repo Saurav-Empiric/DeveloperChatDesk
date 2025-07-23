@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, User } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -14,7 +14,6 @@ import Link from 'next/link';
 function DeveloperLoginComponent() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

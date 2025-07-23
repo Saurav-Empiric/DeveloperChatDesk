@@ -3,6 +3,17 @@ import axios, { AxiosError } from 'axios';
 // Use ChatAssignment instead of Assignment for consistency
 export type Assignment = ChatAssignment;
 
+export type WhatsAppSession = {
+  id: string;
+  name: string;
+  status: string;
+  me?: {
+    id: string;
+    pushName: string;
+  };  
+  isActive: boolean;
+};
+
 /**
  * Get all chats
  */

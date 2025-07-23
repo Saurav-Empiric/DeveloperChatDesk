@@ -1,13 +1,13 @@
 'use client';
 
+import { MessageInput } from '@/components/chats/MessageInput';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   getAssignments,
   getChats,
   getMessages,
-  getSessions,
   sendMessage as sendMessageService,
-  unassignChat,
+  unassignChat
 } from '@/services/whatsappService';
 import {
   useInfiniteQuery,
@@ -17,9 +17,8 @@ import {
 } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { MessageInput } from '@/components/chats/MessageInput';
 // Import chat components
 import {
   AssignChatDialog,
@@ -33,7 +32,6 @@ import {
   SessionSelector,
 } from '@/components/admin/chat';
 import { QUERY_KEYS } from '@/lib/constants';
-// 1. Create a shared hook for sessions and WAHA status
 import { useAdminSessionsAndWahaStatus } from '@/hooks/useAdminSessionsAndWahaStatus';
 
 // Extend the Chat type to include multiple developers
@@ -100,8 +98,8 @@ interface MessagesPage {
 }
 
 export default function AdminChats() {
-  const { data, status, router } = useAdminSessionsAndWahaStatus();
-  // data: { wahaStatus, sessions, error, isLoading, refetchSessions, refetchWahaStatus, syncSessionsMutation }
+  const { data, status } = useAdminSessionsAndWahaStatus();
+  const router = useRouter();
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('chats');
