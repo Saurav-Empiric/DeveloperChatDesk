@@ -64,7 +64,7 @@ export default function Login() {
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Login</CardTitle>
+          <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,7 +90,7 @@ export default function Login() {
               />
               <div className="text-right">
                 <Link
-                  href="/forgot-password"
+                  href="/admin/forgot-password"
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Forgot password?
@@ -108,7 +108,7 @@ export default function Login() {
 
             <div className="text-center text-sm">
               <Link
-                href="/register"
+                href="/admin/register"
                 className="text-blue-500 hover:underline"
               >
                 Need an account? Register

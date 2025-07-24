@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, User } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, Suspense } from 'react';
-import { toast } from 'sonner';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 function DeveloperLoginComponent() {
   const router = useRouter();
@@ -108,7 +107,7 @@ function DeveloperLoginComponent() {
               />
               <div className="text-right">
                 <Link
-                  href="/developer/forgot-password"
+                  href="/forgot-password"
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Forgot password?
@@ -144,12 +143,14 @@ function DeveloperLoginComponent() {
 
 export default function DeveloperLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-      </div>
-    }>
-      <DeveloperLoginComponent />
-    </Suspense>
+    <>
+      <Suspense fallback={
+        <div className="flex justify-center items-center min-h-screen bg-gray-50">
+          <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+        </div>
+      }>
+        <DeveloperLoginComponent />
+      </Suspense>
+    </>
   );
 } 

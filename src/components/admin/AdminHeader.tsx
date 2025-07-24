@@ -26,7 +26,7 @@ export default function AdminHeader() {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
-    router.push('/login');
+    router.push('/admin/login');
   };
 
   const getInitials = (name: string) => {

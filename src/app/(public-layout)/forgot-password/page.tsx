@@ -77,7 +77,7 @@ export default function DeveloperForgotPasswordPage() {
                 className="w-full"
                 asChild
               >
-                <Link href="/developer/login">
+                <Link href="/login">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Login
                 </Link>
@@ -122,7 +122,7 @@ export default function DeveloperForgotPasswordPage() {
               
               <div className="text-center">
                 <Link 
-                  href="/developer/login" 
+                  href="/login" 
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Back to Login

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-export default function Navbar() {
+export default function DeveloperNavbar() {
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -21,7 +21,7 @@ export default function Navbar() {
     await signOut({ redirect: false });
     // Redirect based on user role
     if (session?.user?.role === 'developer') {
-      router.push('/developer/login');
+      router.push('/login');
     } else {
       router.push('/login');
     }

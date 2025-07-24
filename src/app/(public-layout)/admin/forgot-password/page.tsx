@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
                 className="w-full"
                 asChild
               >
-                <Link href="/login">
+                <Link href="/admin/login">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Login
                 </Link>
@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
               
               <div className="text-center">
                 <Link 
-                  href="/login" 
+                  href="/admin/login" 
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Back to Login

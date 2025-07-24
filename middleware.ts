@@ -8,16 +8,10 @@ export default withAuth(
 
     // Developer routes protection
     if (pathname.startsWith('/developer')) {
-      // Allow access to developer login page
-      if (pathname === '/developer/login') {
-        return NextResponse.next();
-      }
-      
       // Require authentication for other developer routes
       if (!token) {
-        return NextResponse.redirect(new URL('/developer/login?redirected=true', req.url));
+        return NextResponse.redirect(new URL('/login?redirected=true', req.url));
       }
-      
       // Require developer role
       if (token.role !== 'developer') {
         return NextResponse.redirect(new URL('/admin/dashboard', req.url));
@@ -28,9 +22,8 @@ export default withAuth(
     if (pathname.startsWith('/admin')) {
       // Require authentication
       if (!token) {
-        return NextResponse.redirect(new URL('/login', req.url));
+        return NextResponse.redirect(new URL('/admin/login', req.url));
       }
-      
       // Require admin role
       if (token.role !== 'admin') {
         return NextResponse.redirect(new URL('/developer/dashboard', req.url));
@@ -43,23 +36,31 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
-        
         // Public routes that don't require authentication
         const publicRoutes = [
           '/',
           '/login',
-          '/register',
-          '/developer/login',
+          '/forgot-password',
+          '/reset-password',
+          '/admin/login',
+          '/admin/register',
+          '/admin/forgot-password',
+          '/admin/reset-password',
+        ];
+        // API routes that should be public
+        const publicApiRoutes = [
           '/api/auth',
           '/api/auth/registration-status',
-          '/api/webhooks/waha/session-events'
+          '/api/webhooks/waha/session-events',
         ];
-        
-        // Allow access to public routes
-        if (publicRoutes.some(route => pathname.startsWith(route))) {
+        // Allow access to public page routes (exact match)
+        if (publicRoutes.includes(pathname)) {
           return true;
         }
-        
+        // Allow access to public API routes (startsWith)
+        if (publicApiRoutes.some(route => pathname.startsWith(route))) {
+          return true;
+        }
         // For protected routes, require valid token
         return !!token;
       },

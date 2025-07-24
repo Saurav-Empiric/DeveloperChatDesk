@@ -47,10 +47,7 @@ function ResetPasswordContent() {
       setResetComplete(true);
       toast.success('Password has been reset successfully');
       
-      // Redirect to login page after 2 seconds
-      setTimeout(() => {
-        router.push('/login?passwordReset=true');
-      }, 2000);
+        router.push('/admin/login?passwordReset=true');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'An error occurred while resetting your password');
@@ -174,7 +171,7 @@ function ResetPasswordContent() {
               
               <div className="text-center">
                 <Link 
-                  href="/forgot-password" 
+                  href="/admin/forgot-password" 
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Request a new reset link

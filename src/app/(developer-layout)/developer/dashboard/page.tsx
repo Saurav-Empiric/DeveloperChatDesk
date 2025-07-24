@@ -149,7 +149,7 @@ export default function DeveloperDashboard() {
   // Redirect if not logged in or not a developer
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/developer/login');
+      router.push('/login');
     } else if (status === 'authenticated' && session?.user?.role !== 'developer') {
       router.push('/admin/dashboard');
     }
