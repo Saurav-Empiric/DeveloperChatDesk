@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -64,7 +64,15 @@ export default function Login() {
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-green-100 p-3 rounded-full">
+              <User className="h-8 w-8 text-green-600" />
+            </div>
+          </div>
           <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
+          <p className="text-sm text-gray-600 text-center">
+            Access your admin dashboard and manage developers
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

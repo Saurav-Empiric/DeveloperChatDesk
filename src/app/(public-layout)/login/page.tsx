@@ -73,8 +73,8 @@ function DeveloperLoginComponent() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="bg-green-100 p-3 rounded-full">
-              <User className="h-8 w-8 text-green-600" />
+            <div className="bg-blue-100 p-3 rounded-full">
+              <User className="h-8 w-8 text-blue-600" />
             </div>
           </div>
           <CardTitle className="text-2xl text-center">Developer Login</CardTitle>
